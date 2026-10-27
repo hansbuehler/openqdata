@@ -1010,7 +1010,7 @@ class MkArbFree:
                 if status in ["infeasible", "infeasible_inaccurate"]:
                     if hard_fit:
                         return None
-                    raise RuntimeError(f"{message()}Numerical solve unresolved: solver reported infeasible for the soft-fit surface; this is not proof of mathematical infeasibility.")
+                    raise RuntimeError(f"{message()}Cannot find no-arbitrage surface mids: problem infeasible??")
                 if status in ["unbounded", "unbounded_inaccurate", "infeasible_or_unbounded"]:
                     raise RuntimeError(f"{message()}Cannot find no-arbitrage surface mids: problem unbounded? This should not happen. Please contact the authors with an example.")
                 if status == "user_limit":
