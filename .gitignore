@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# qdata generated output
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+qdata.toml
