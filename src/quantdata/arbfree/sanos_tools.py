@@ -17,7 +17,10 @@ from cdxcore.err import verify, verify_inp
 from cdxcore.pretty import PrettyObject
 from cdxcore.verbose import Context
 from cdxcore.version import version
+from cvxpy import settings as cps
 from cvxpy.error import SolverError
+from cvxpy.reductions.cvx_attr2constr import CvxAttr2Constr, recover_value_for_leaf
+from cvxpy.reductions.solution import Solution
 
 from quantdata.arbfree.tridiag import solve_sanos_tridiagonal
 from quantdata.biz_calendar import DAYS_PER_YEAR, ONE_MINUTE
@@ -474,10 +477,34 @@ class SanosLPSolver:
                 prob.solve( solver=slv, **opt )
                 prob_status  = str(prob.status)
             except SolverError as e:
-                if not is_fallback and self.algorithm != "clarabel":
-                    warnings.warn(f"{message()}Solver error: {str(e)}. Attempting to solve with fallback solver.")
-                    return self( objective=objective, constraints=constraints, variables=variables, message_context=message_context, for_expiry=for_expiry, is_fallback=True, verbose=verbose )
-                raise type(e)(f"{message()}Solver error: {str(e)}.") from e
+                prob_status = "solver_error"
+                # CVXPY discards Clarabel's primal on NumericalError. Recover
+                # only the current solver's iterate, never the initial guess.
+                if slv == "CLARABEL" and "CLARABEL" in prob._solver_cache:
+                    native = prob._solver_cache["CLARABEL"].get_solution()
+                    prob_status = str(native.status)
+                    if native.x is not None and np.all(np.isfinite(native.x)):
+                        _, chain, inverse = prob.get_problem_data(slv)
+                        solution = Solution(cp.USER_LIMIT, native.obj_val + inverse[-1][cps.OFFSET],
+                                            {inverse[-1][chain.reductions[-1].VAR_ID]: np.asarray(native.x)}, {}, {})
+                        for reduction, inv in reversed(list(zip(chain.reductions[:-1], inverse[:-1]))):
+                            if isinstance(reduction, CvxAttr2Constr) and inv:
+                                # CVXPY normally clips bounds here, hiding violations.
+                                new, old, _ = inv
+                                solution.primal_vars = {key: recover_value_for_leaf(var, solution.primal_vars[new[key].id], project=False)
+                                                        for key, var in old.items()}
+                            else:
+                                solution = reduction.invert(solution, inv)
+                        for v in prob.variables():
+                            v.save_value(solution.primal_vars[v.id])
+                        prob._value = objective.value
+                    else:
+                        for v in prob.variables():
+                            v.save_value(None)
+                else:
+                    for v in prob.variables():
+                        v.save_value(None)
+                warnings.warn(f"{message()}Solver stopped with {prob_status}: {e}. Checking its final iterate.")
             except RuntimeWarning as e:
                 prob_status = f"overflow error ({str(e.__class__.__name__)})"
             except Exception as e:
@@ -487,23 +514,25 @@ class SanosLPSolver:
                         return self( objective=objective, constraints=constraints, variables=variables, message_context=message_context, for_expiry=for_expiry, is_fallback=True, verbose=verbose )
                 raise type(e)(f"{message()}Unexpected error: {str(e)}.") from e
 
-            # A limit need not invalidate a feasible iterate; fit quality is
-            # assessed downstream. Include variable bounds, not just constraints.
-            if prob_status == "user_limit" and prob.value is not None and np.isfinite(prob.value):
+            # Numerical termination does not imply mathematical infeasibility.
+            # Check the original constraints and bounds; fit quality is downstream.
+            if prob.value is not None and np.isfinite(prob.value):
                 if all(v.value is not None and np.all(np.isfinite(v.value)) for v in prob.variables()):
                     violations = [np.max(np.abs(v.value - v.project(v.value))) for v in prob.variables()]
                     violations += [np.max(c.violation()) for c in constraints]
-                    if np.all(np.isfinite(violations)) and max(violations, default=0.) <= 1E-7:
-                        warnings.warn(f"{message()}Solver reached its limit; accepting feasible iterate (max violation {max(violations, default=0.):.3g}). Fit quality checked downstream.")
-                        return True, prob_status, is_fallback
+                    for tolerance in (1E-7, 1E-5):
+                        if np.all(np.isfinite(violations)) and max(violations, default=0.) <= tolerance:
+                            if prob_status not in ("optimal", "optimal_inaccurate") or tolerance > 1E-7:
+                                warnings.warn(f"{message()}Solver status {prob_status}; accepting feasible iterate (max violation {max(violations, default=0.):.3g}, tolerance {tolerance:g}). Fit quality checked downstream.")
+                            return True, prob_status, is_fallback
 
             if (
-                prob_status == "user_limit"
+                prob_status not in ("infeasible", "infeasible_inaccurate")
                 and not is_fallback
                 and self.algorithm != "clarabel"
             ):
                 warnings.warn(
-                    f"{message()}Primary solver reached its limit. "
+                    f"{message()}Primary solver returned {prob_status} without a verified feasible iterate. "
                     "Attempting to solve with fallback solver."
                 )
                 return self(
@@ -515,8 +544,9 @@ class SanosLPSolver:
                     is_fallback=True,
                     verbose=verbose,
                 )
-            success = prob_status in ["optimal", "optimal_inaccurate"]
-        return success, prob_status, is_fallback
+            if prob_status not in ("infeasible", "infeasible_inaccurate"):
+                warnings.warn(f"{message()}Numerical solve unresolved ({prob_status}); no verified feasible iterate. This is not proof of mathematical infeasibility.")
+        return False, prob_status, is_fallback
 
     def _lp_solver_settings( self, *, for_expiry : bool, is_fallback : bool ) -> tuple[str, dict]:
         """ Return lp solver settings """

@@ -7,11 +7,12 @@ import pytest
 from quantdata.arbfree.sanos_tools import SanosLPSolver
 
 
+@pytest.mark.parametrize('residual', [0., 5E-6])
 @pytest.mark.parametrize('algorithm,is_fallback', [('simplex', False), ('clarabel', False), ('simplex', True)])
-def test_limit_accepts_feasible_nonoptimal_density(monkeypatch, algorithm, is_fallback):
+def test_limit_accepts_feasible_nonoptimal_density(monkeypatch, algorithm, is_fallback, residual):
     density = cp.Variable(3, bounds=[0., 1.])
     strikes = np.array([0.5, 1., 1.5])
-    candidate = np.array([0.25, 0.5, 0.25])
+    candidate = np.array([0.25, 0.5 + residual, 0.25])
     constraints = [cp.sum(density) == 1., strikes @ density == 1.]
     calls = []
 
@@ -22,11 +23,13 @@ def test_limit_accepts_feasible_nonoptimal_density(monkeypatch, algorithm, is_fa
         problem._value = float(density[0].value)
 
     monkeypatch.setattr(cp.Problem, 'solve', solve)
-    with pytest.warns(UserWarning, match='accepting feasible iterate'):
+    with pytest.warns(UserWarning, match='accepting feasible iterate') as recorded:
         result = SanosLPSolver(algorithm=algorithm)(
             objective=density[0], constraints=constraints, variables=[(density, None)], is_fallback=is_fallback,
         )
 
+    expected_tolerance = '1e-07' if residual == 0. else '1e-05'
+    assert f'tolerance {expected_tolerance}' in str(recorded[0].message)
     assert result == (True, 'user_limit', is_fallback)
     assert len(calls) == 1  # No fallback when a feasible primary iterate is available.
     np.testing.assert_array_equal(density.value, candidate)
@@ -39,6 +42,7 @@ def test_limit_accepts_feasible_nonoptimal_density(monkeypatch, algorithm, is_fa
     [np.inf, 0.5, 0.25],
     [-0.1, 1.2, -0.1],  # Mass and martingale hold; implicit bounds fail.
     [0.25, 0.4, 0.25],  # Mass fails.
+    [0.25, 0.5 + 2E-5, 0.25],  # Residual exceeds the relaxed tolerance.
     [0.2, 0.5, 0.3],  # Martingale fails.
     [0., 1., 0.],  # Mass, martingale and bounds hold; calendar no-arbitrage fails.
 ])
@@ -57,3 +61,53 @@ def test_limit_rejects_missing_or_arbitrage_violating_density(monkeypatch, candi
         objective=density[0], constraints=constraints, variables=[(density, None)],
     )
     assert result == (False, 'user_limit', False)
+
+
+@pytest.mark.parametrize('candidate,accepted', [
+    ([0.25, 0.5, 0.25], True),
+    ([0.25, 0.500005, 0.25], True),
+    ([-0.1, 1.2, -0.1], False),
+    ([np.nan, 0.5, 0.25], False),
+])
+def test_numerical_error_recovers_native_primal(monkeypatch, candidate, accepted):
+    from types import SimpleNamespace
+
+    density = cp.Variable(3, bounds=[0., 1.])
+    constraints = [cp.sum(density) == 1., np.array([0.5, 1., 1.5]) @ density == 1.]
+    original = cp.Problem.solve
+
+    def solve(problem, **kwargs):
+        original(problem, **kwargs)
+        data, _, inverse = problem.get_problem_data(cp.CLARABEL)
+        # Map through CVXPY's real canonicalization, including bound reductions.
+        primal = np.zeros(len(data['c']))
+        offset = inverse[0].var_offsets[density.id]
+        primal[offset:offset + 3] = candidate
+        native = SimpleNamespace(status='NumericalError', x=primal, obj_val=0.)
+        problem._solver_cache['CLARABEL'] = SimpleNamespace(get_solution=lambda: native)
+        density.save_value(np.array([0., 1., 0.]))  # Stale feasible values must not be accepted.
+        raise cp.error.SolverError('NumericalError')
+
+    monkeypatch.setattr(cp.Problem, 'solve', solve)
+    with pytest.warns(UserWarning):
+        result = SanosLPSolver(algorithm='clarabel')(
+            objective=density[0], constraints=constraints, variables=[(density, None)],
+        )
+    assert result == (accepted, 'NumericalError', False)
+    if accepted:
+        np.testing.assert_array_equal(density.value, candidate)
+
+
+def test_solver_error_does_not_accept_initial_guess(monkeypatch):
+    density = cp.Variable(3, bounds=[0., 1.])
+
+    def solve(problem, **kwargs):
+        raise cp.error.SolverError('No native solution')
+
+    monkeypatch.setattr(cp.Problem, 'solve', solve)
+    with pytest.warns(UserWarning):
+        result = SanosLPSolver(algorithm='clarabel')(
+            objective=density[0], constraints=[cp.sum(density) == 1.],
+            variables=[(density, np.array([0.25, 0.5, 0.25]))],
+        )
+    assert result == (False, 'solver_error', False)
