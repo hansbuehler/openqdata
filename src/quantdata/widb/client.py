@@ -200,7 +200,7 @@ class WIDBClient(object):
             FROM {securd}
         """
         df = conn.raw_sql(query)
-        return dict(zip(df["ticker"], df["secid"]))
+        return dict(zip(df["ticker"], df["secid"], strict=True))
 
     @version("0.3", dependencies=["ticker_to_secid_map"])
     def lookup_secid(self, ticker: str) -> int:

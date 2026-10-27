@@ -15,3 +15,5 @@ Set `OQ_DATA_TEST_MODE=1` and `OQ_DATA_TEST_ROOT` to an existing fixture root to
 - `contracts.py`: quantdata.massive.options.contracts. Public entry points: `REJECTED`, `ContractsFilter`, `filter_contracts`, `filter_contracts_between`, `main`.
 
 Processing modules provide `python -m quantdata.<source>.<module> --help`. New adapters accept a function name and `--params` containing JSON keyword arguments. Existing specialized commands retain their own options.
+
+See [Download an option chain, quotes and trades](notebooks/download_options_quotes_trades.ipynb) for a complete ticker/date example with DTE, moneyness and volume filters, downloads for every selected contract, and per-option progress and errors.

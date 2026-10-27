@@ -12,7 +12,7 @@ python -m quantdata.widb.day --help
 New adapters expose public functions with JSON keyword parameters:
 
 ```sh
-python -m quantdata.fred.rates load_fred_rates --params '{"start":"2022-01-01","end":"2022-02-01"}' --output /data/quant_data/qdata/runs/example/rates.parquet
+python -m quantdata.fred.rates load_fred_rates --params '{"start":"2022-01-01","end":"2022-02-01"}' --output /data/quant_data/quantdata/runs/example/rates.parquet
 ```
 
 This example may download data outside test mode. Existing specialized CLIs retain their options. Function adapters accept simple scalar/list/dict JSON parameters and ISO dates for date-annotated arguments; construct complex filter/configuration dataclasses through Python imports. Numerical classes are Python APIs. Outputs belong outside Git working trees, in uniquely named run directories.

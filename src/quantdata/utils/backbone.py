@@ -34,7 +34,7 @@ class Backbone(object):
         for shape2 in shapes[1:]:
             if len(shape1) != len(shape2):
                 return False   
-            for x1, x2 in zip(shape1, shape2):
+            for x1, x2 in zip(shape1, shape2, strict=True):
                 if x1 != x2 and x1 != 1 and x2 != 1:
                     return False
         return True

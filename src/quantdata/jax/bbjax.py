@@ -76,7 +76,7 @@ class BackboneJax(Backbone):
         arr_expand_shape = arr_shape.copy()
         index_expand_shape = index_shape.copy()
 
-        for dim, (arr_dim, index_dim) in enumerate(zip(arr_shape, index_shape)):
+        for dim, (arr_dim, index_dim) in enumerate(zip(arr_shape, index_shape, strict=True)):
             if dim == axis:
                 continue
             if arr_dim == index_dim:

@@ -26,7 +26,7 @@ def generate_day(ticker, d):
     print(ocv)
     ocv = client.fetch_day_summary(ticker, d, adjusted=False)
     print(ocv)
-    trades = client.fetch_trades(ticker, d) # extracts trades, removed zero size and price, and excludes trades with NORMAL_TRADE_EXCLUDE_FLAGS
+    trades = client.fetch_trades(ticker, d) # raw trades retain condition flags; filtering below applies NORMAL_TRADE_EXCLUDE_FLAGS
     print(trades)
     quotes = client.fetch_quotes(ticker, d)
     print(quotes)

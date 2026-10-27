@@ -537,11 +537,11 @@ def collect_raw_day( ticker : str,
         if np.min(r.bdte) <= 0:
             # historically end of month expiries might fall on a Saturday AM
             # we check that if BDTE is zero, those are the cases
-            bad_expiries = np.unique( r.expiry[r.bdte <= 0] )
-            bad_is_am    = np.unique( r.is_am[r.bdte <= 0] )
-            bad_bdte     = np.unique( r.bdte[r.bdte <= 0] )
+            bad_expiries = r.expiry[r.bdte <= 0]
+            bad_is_am    = r.is_am[r.bdte <= 0]
+            bad_bdte     = r.bdte[r.bdte <= 0]
 
-            for be, bam, bb in zip(bad_expiries, bad_is_am, bad_bdte):
+            for be, bam, bb in zip(bad_expiries, bad_is_am, bad_bdte, strict=True):
                 be = to_date(be)
                 assert bb == 0, f"Internal error: expected non-positive business days to expiry to be exactly zero, found {bb} for expiry {be} with is_am={bam}. Please contact the authors with an example."
                 assert be.weekday() == 5, f"Internal error: expected bad expiry {be} to be a Saturday, found weekday {be.weekday()}. Please contact the authors with an example."

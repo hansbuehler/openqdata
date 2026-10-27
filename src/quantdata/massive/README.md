@@ -19,18 +19,30 @@ Set `OQ_DATA_TEST_MODE=1` and `OQ_DATA_TEST_ROOT` to an existing fixture root to
 
 Processing modules provide `python -m quantdata.<source>.<module> --help`. New adapters accept a function name and `--params` containing JSON keyword arguments. Existing specialized commands retain their own options.
 
+## Trade-condition defaults
+
+`filter_valid_trades()` excludes closing prints (IDs 8 and 19), official closes
+(15), and corrected consolidated closes (38), as well as opening prints/official
+opens, crosses, contingent trades and the other `NORMAL_TRADE_EXCLUDE_FLAGS`.
+Both alignment functions inherit this filter. `within_session=False` changes
+only the time window; closing conditions remain excluded. Odd lots remain included.
+
+`MassiveClient.fetch_trades()` retains raw condition records.
+`build_unadjusted_trades()` filters session timestamps only, and
+`build_1s_trade_bars()` uses that stream by default, including closing prints.
+Pass `trades=filter_valid_trades(ticker, d)` to the bar builder to exclude them.
+
 ## Original module documentation
 
 # [Massive](http://www.massive.com) Data Access
 
 This directory contains Ivy DB data processing in the following files:
 
-* [client.py](client.py) provides the ``MassiveClient`` class which wraps various minutae of downloading data from massive (e.g. paging). This class has self-explanatory functions such 
+* [client.py](client.py) provides the ``MassiveClient`` class which wraps various minutae of downloading data from massive (e.g. paging). This class has self-explanatory functions such
   as ``fetch_trades``, ``fetch_quotes``, ``fetch_bars`` and a few others; see documentation.
-  This functionality is basically raw access to data. It provides very little processing, except that it filters by trade conditions for you, and encodes
-  them into a ``trade_code`` per row. 
+  This functionality is basically raw access to data. It provides very little processing, except that it packs trade-condition IDs into a ``trade_code`` per row.
 
-  It is recommended that you use [processing.py](processing.py) ``extract_trades`` instead of the raw ``fetch_trades`` to obtain trades.
+  It is recommended that you use [processing.py](processing.py) ``filter_valid_trades`` instead of the raw ``fetch_trades`` to obtain trades.
   The former applies a few standard trade filters.
 
 * [options/contracts.py](options/contracts.py) gives access to all option contracts listed for a given ticker on a given date.
@@ -39,8 +51,8 @@ This directory contains Ivy DB data processing in the following files:
 
 To access this data:
 
-  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../README.md) which means to set at 
-  least the ``OQ_DATA_ROOT`` environment variable. 
+  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../README.md) which means to set at
+  least the ``OQ_DATA_ROOT`` environment variable.
   [See the discussion in data locations and how to set them](../../README.md#data-locations).
 
   2. Ensure you have an account and test it. The [Massive quickstart](https://massive.com/docs/rest/quickstart) contains some helpful information.
@@ -60,8 +72,8 @@ To access this data:
 
 ### Option Contracts
 
-Options are just tickers for Massive. 
-In order to retrieve the option tickers for listed options of a given underlying ticker on a given date, use ``quantdata/massive/options/contracts.py``. 
+Options are just tickers for Massive.
+In order to retrieve the option tickers for listed options of a given underlying ticker on a given date, use ``quantdata/massive/options/contracts.py``.
 
 
 
@@ -92,7 +104,7 @@ In order to retrieve the option tickers for listed options of a given underlying
 The ``ContractsFilter`` filter offers the following filters:
 
 * ``max_dte``: maximum days to expiry in business days.
-* ``max_mns``: maximum normalized strike, i.e. 
+* ``max_mns``: maximum normalized strike, i.e.
    $$
    \left| 10\, \log\left(\frac{K}{S_{prev}}\right)   \sqrt{\frac{1+e}{T+e}} \right| \approx \left| \log\left(\frac{K}{S_{prev}}\right) \frac1{ 0.1\sqrt{T}} \right|
    $$, where $S_prev$ is the previous close adjusted for stock splits and dividends to match todays unadjusted price, and T is time to expiry in years. This is a measure of moneyness that accounts for both distance to the money and time to expiry.

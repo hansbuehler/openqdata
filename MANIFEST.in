@@ -1,5 +1,5 @@
 include README.md
-include qdata.example.toml
+include quantdata.example.toml
 recursive-include docs *.md *.py
 recursive-include src README.md
 recursive-exclude src *.ipynb

@@ -36,8 +36,8 @@ import polars as pl
 import requests as requests
 from cdxcore.err import verify
 from cdxcore.subdir import SubDir, version
-from cdxcore.uniquehash import named_unique_filename48_8
-from cdxcore.util import fmt_date, verify_inp
+from cdxcore.uniquehash import label_unique_filename48_8, named_unique_filename48_8
+from cdxcore.util import fmt_date, is_filename, verify_inp
 from massive import RESTClient
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -331,7 +331,10 @@ class MassiveClient(object):
     def fetch_trades(self, ticker: str, d: date) -> pl.DataFrame:
         """
         Gets trades from /v3/trades/{ticker} sorted by sip_timestamp asc.
-        Used both for options and underlyings.
+        Used both for options and underlyings. This is raw trade access: it
+        encodes condition flags but does not apply ``NORMAL_TRADE_EXCLUDE_FLAGS``.
+        Closing prints and official/corrected closes are retained. Use
+        ``filter_valid_trades()`` for the default condition-filtered trade stream.
 
         The returned :class:`polars.DataFrame` has the following columns:
 
@@ -490,9 +493,9 @@ class MassiveClient(object):
     """ Schema of the :class:`polars.DataFrame` returned by :meth:`fetch_bars`. """
 
     @_cache(fmt=SubDir.POLARS_PARQUET).cache(
-        "0.1",
+        "0.2",
         uid=lambda ticker, start, end, adjusted, timespan: (
-            f"bars/{timespan}/{'adj' if adjusted else 'raw'}/{ticker}/{fmt_date(start)}_{fmt_date(end)}_{timespan}"
+            f"bars/{timespan}/{'adj' if adjusted else 'raw'}/{ticker if is_filename(ticker) else label_unique_filename48_8(ticker)}/{fmt_date(start)}_{fmt_date(end)}_{timespan}"
         ),
         exclude_args=["self"],
     )  # 'self' is excluded fromm the arguments as it does not affect the output.
@@ -564,6 +567,7 @@ class MassiveClient(object):
             pl.from_epoch(pl.col("t").cast(pl.Int64), time_unit="ms")
             .dt.replace_time_zone("UTC")
             .dt.convert_time_zone(TZ_NY.key)
+            .dt.cast_time_unit("ms")
             .alias("ts_ms"),
             pl.col("c").cast(pl.Float64).alias("close"),
             pl.col("o").cast(pl.Float64).alias("open"),
@@ -1072,7 +1076,7 @@ class MassiveClient(object):
             massive_schema={
                 # https://massive.com/docs/rest/stocks/corporate-actions/splits
                 'adjustment_type': pl.String,
-                'execution_date': pl.Date,
+                'execution_date': pl.String,
                 'historical_adjustment_factor': pl.Float64,
                 'id': pl.String,
                 'split_from': pl.Int32,

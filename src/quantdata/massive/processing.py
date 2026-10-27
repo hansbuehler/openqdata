@@ -35,8 +35,15 @@ def filter_valid_trades(
 ) -> pl.DataFrame:
     """
     Returns trades for a given underlying and date within session hours (optionally).
-    Removes trades with NORMAL_TRADE_EXCLUDE_FLAGS and price or size zero or negative.
-    For trades at the sime sip time stamp, computes aggregate trade size.
+    Always applies ``NORMAL_TRADE_EXCLUDE_FLAGS``: closing prints (condition IDs
+    8 and 19), official closes (15), corrected consolidated closes (38), opening
+    prints/official opens, crosses, contingent trades and data-quality exclusions
+    are removed. This condition filter also applies with ``within_session=False``;
+    that argument changes only the session-hours restriction. Odd lots are retained.
+    Trades with nonpositive prices or sizes are removed. Trades sharing a SIP
+    timestamp are aggregated using total size and volume-weighted price.
+
+    Use ``MassiveClient.fetch_trades()`` to retain closing-condition records.
 
     Returns a polars data frame with :attr:`MassiveClient.SCHEMA_TRADES` schema with the following columns:
       ts_ns       Datetime[ns,tz]
@@ -153,7 +160,9 @@ def filter_valid_quotes(
 class TradeQuoteAlignmentConfig:
     """
     Configuration for matching trades to nearby valid quotes.
-    Times are in milliseconds.
+    Times are in milliseconds. These settings control matching windows only;
+    alignment always uses ``filter_valid_trades()``, excluding closing prints
+    and official/corrected closes through ``NORMAL_TRADE_EXCLUDE_FLAGS``.
     """
     lookback_ms: int = 250   # how many milliseconds to look back
     lookfwd_ms: int = 250    # how many milliseconds to look forward
@@ -223,6 +232,11 @@ def align_quotes_to_trades(
     """
     Fetch valid trades and quotes for ``ticker`` on ``d`` and align them on a common timeline.
 
+    Trade selection uses ``filter_valid_trades()`` and always excludes closing
+    prints and official/corrected closes, along with the other
+    ``NORMAL_TRADE_EXCLUDE_FLAGS``. Setting ``within_session=False`` does not
+    restore these trades. Odd lots are retained.
+
     For each trade, this first finds the latest quote between ``config.lookback_ms``
     and the trade timestamp where ``bid_price <= price <= ask_price``. If no such
     quote exists, it finds the first matching quote up to ``config.lookfwd_ms`` after
@@ -258,7 +272,7 @@ def align_quotes_to_trades(
     lookback_ns = int(config.lookback_ms) * 1_000_000
     lookfwd_ns = int(config.lookfwd_ms) * 1_000_000
 
-    for i, (ts, price) in enumerate(zip(trade_ts, trade_price)):
+    for i, (ts, price) in enumerate(zip(trade_ts, trade_price, strict=True)):
         quote_row = _find_quote(
             bid_price=bid_price,
             ask_price=ask_price,
@@ -338,6 +352,11 @@ def align_trades_to_quotes(
     """
     Fetch valid trades and quotes for ``ticker`` on ``d`` and align trades onto quotes.
 
+    Trade selection uses ``filter_valid_trades()`` and always excludes closing
+    prints and official/corrected closes, along with the other
+    ``NORMAL_TRADE_EXCLUDE_FLAGS``. Setting ``within_session=False`` does not
+    restore these trades. Odd lots are retained.
+
     For each quote, this first finds the latest trade between ``config.lookback_ms``
     and the quote timestamp where ``bid_price <= price <= ask_price``. If no such
     trade exists, it finds the first matching trade up to ``config.lookfwd_ms`` after
@@ -370,7 +389,7 @@ def align_trades_to_quotes(
     lookback_ns = int(config.lookback_ms) * 1_000_000
     lookfwd_ns = int(config.lookfwd_ms) * 1_000_000
 
-    for i, (ts, bid, ask) in enumerate(zip(quote_ts, bid_price, ask_price)):
+    for i, (ts, bid, ask) in enumerate(zip(quote_ts, bid_price, ask_price, strict=True)):
         trade_row = _find_trade(
             trade_price=trade_price,
             bid=bid,

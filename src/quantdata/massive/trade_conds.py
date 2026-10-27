@@ -296,6 +296,10 @@ NORMAL_TRADE_EXCLUDE_FLAGS = (
 """
 Flags for normal trade filtering: these conditions are commonly excluded when filtering for regular market trades. This includes all microstructure hard excludes plus cross trades, opening/closing prints, official open/closes, and contingent trades. 
 
+Closing prints (condition IDs 8 and 19), official closes (15), and corrected
+consolidated closes (38) are excluded, regardless of session-hours filtering.
+``filter_valid_trades`` and both trade/quote alignment functions apply this mask.
+Raw ``MassiveClient.fetch_trades`` and session-only trade/bar builders do not.
 We do not exclude ``ConditionFlag.ODD_LOT`` here.
 """
 

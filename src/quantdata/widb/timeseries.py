@@ -363,7 +363,7 @@ def table_of_time_series( r : dict[str:np.array|str|type] ) -> PrettyTable:
             vlid = v[is_valid] if k!="is_valid" and v.shape==is_valid.shape else v
             try:
                 vlid = vlid.astype(np.float64)
-            except Exception as e:
+            except Exception:
                 tbl.add_row( [k, v.shape, v.dtype, fmt_big_byte_number(v.nbytes), "", "", "", ""] )
                 nsize += v.nbytes   
                 continue

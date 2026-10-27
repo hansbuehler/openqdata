@@ -305,7 +305,7 @@ def add_business_days(
                         f"start and num_days must have the same shape, but got {start.shape} and {num_days.shape}" )
             return np.asarray( [
                     add_business_days(s, n, exclude_half_days=exclude_half_days)
-                    for s, n in zip(start, num_days)
+                    for s, n in zip(start, num_days, strict=True)
                 ], dtype="datetime64[D]" )
         return np.asarray(
             [add_business_days(s, num_days, exclude_half_days=exclude_half_days) for s in start],

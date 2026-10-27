@@ -81,6 +81,10 @@ def build_unadjusted_trades(
     """
     Unadjusted trades for ``underlying`` on ``d``, filtered to RTH session ``[open, close]``.
 
+    Applies a timestamp filter only. Closing prints and official/corrected closes
+    are retained; ``NORMAL_TRADE_EXCLUDE_FLAGS`` is not applied. For a trade stream
+    that excludes those conditions, use ``filter_valid_trades()`` instead.
+
     Returns
     -------
     pl.DataFrame
@@ -226,6 +230,11 @@ def build_1s_trade_bars(
 ) -> pl.DataFrame:
     """
     Per-second OHLCV trade bars for ``underlying`` on ``d``.
+
+    By default, trades come from ``build_unadjusted_trades()``: this restricts
+    timestamps to the session but retains closing prints and official/corrected
+    closes. To exclude these conditions, pass
+    ``trades=filter_valid_trades(underlying, d)`` explicitly.
 
     Bin semantics:
 

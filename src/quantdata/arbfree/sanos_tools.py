@@ -58,7 +58,7 @@ class SanosPricer:
         verify_inp( self.expiries.shape == self.variances.shape, lambda : f"Shape of 'expiries' {self.expiries.shape} must match shape of 'variances' {self.variances.shape}" )
 
         verify_inp( len(self.xstrikes) == len(self.xdensities) == len(self.expiries), lambda : f"Length of 'xstrikes' and 'xdensities' lists must match length of 'expiries', but found {len(self.xstrikes)}, {len(self.xdensities)} and {len(self.expiries)}" )
-        for i, (xstrikes_i, xdensities_i) in enumerate(zip(self.xstrikes, self.xdensities)):
+        for i, (xstrikes_i, xdensities_i) in enumerate(zip(self.xstrikes, self.xdensities, strict=True)):
             verify_inp( xstrikes_i.shape == xdensities_i.shape, lambda : f"Shape of 'xstrikes[{i}]' {xstrikes_i.shape} must match shape of 'xdensities[{i}]' {xdensities_i.shape}" )
             verify_inp( xstrikes_i[0] > 0. and np.min( np.diff(xstrikes_i) ) > 0., lambda : f"'xstrikes[{i}]' must be positive and increasing, but found differences {np.diff(xstrikes_i).min():.4g}" )
             verify_inp( np.all(xdensities_i >= 0.), lambda : f"'xdensities[{i}]' must be non-negative, but found {xdensities_i}" )
@@ -486,6 +486,16 @@ class SanosLPSolver:
                     if 'Cannot unpack invalid solution' in msg:
                         return self( objective=objective, constraints=constraints, variables=variables, message_context=message_context, for_expiry=for_expiry, is_fallback=True, verbose=verbose )
                 raise type(e)(f"{message()}Unexpected error: {str(e)}.") from e
+
+            # A limit need not invalidate a feasible iterate; fit quality is
+            # assessed downstream. Include variable bounds, not just constraints.
+            if prob_status == "user_limit" and prob.value is not None and np.isfinite(prob.value):
+                if all(v.value is not None and np.all(np.isfinite(v.value)) for v in prob.variables()):
+                    violations = [np.max(np.abs(v.value - v.project(v.value))) for v in prob.variables()]
+                    violations += [np.max(c.violation()) for c in constraints]
+                    if np.all(np.isfinite(violations)) and max(violations, default=0.) <= 1E-7:
+                        warnings.warn(f"{message()}Solver reached its limit; accepting feasible iterate (max violation {max(violations, default=0.):.3g}). Fit quality checked downstream.")
+                        return True, prob_status, is_fallback
 
             if (
                 prob_status == "user_limit"

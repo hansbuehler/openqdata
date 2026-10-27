@@ -208,7 +208,7 @@ class YFClient(object):
             raise DataError(f"{ticker}: Low prices of zero found", ticker=ticker, start=start, end=end)
 
         df.index = df.index.values.astype('datetime64[D]')
-        df = df.astype(np.float64, copy=False)
+        df = df.astype(np.float64)
         return df
         
 

@@ -1,5 +1,5 @@
 """Minimal Sphinx/MyST documentation scaffold."""
-project = "qdata"
+project = "quantdata"
 release = "0.1.0"
 extensions = ["myst_parser", "sphinx.ext.autodoc"]
 source_suffix = {".md": "markdown"}

@@ -210,7 +210,7 @@ def mk_arb_free_day(
     assert np.min( np.diff(unique_expiry_ids) ) > 0, f"{ticker} {d}: expiry ids are expected to be strictly increasing. Found non-increasing expiry ids: {fmt_list(unique_expiry_ids)}."
     if np.min( np.diff(expiries) ) <= 0:
         text = ""
-        for xid, expiry, date, is_am, ks in zip(unique_expiry_ids, expiries, expiries_d, is_ams, strikes):
+        for xid, expiry, date, is_am, ks in zip(unique_expiry_ids, expiries, expiries_d, is_ams, strikes, strict=True):
             text += f"Expiry ID {xid} has expiry {expiry} on date {date} (AM: {is_am}) with {len(ks)} strikes\n"
         warnings.warn("*** Error:\n"+text)
         assert np.min( np.diff(expiries) ) > 0, f"{ticker} {d}: expiries are expected to be strictly increasing."
@@ -291,7 +291,7 @@ def mk_arb_free_day(
 
     for column, dtype in expected_schema.items():
         if result[column].dtype != dtype:
-            result[column] = result[column].astype(dtype, copy=False)
+            result[column] = result[column].astype(dtype)
 
     verify_schema(result, expected_schema, lambda: f"{ticker} {d}")
 
@@ -406,7 +406,7 @@ def mk_arb_free_day2(
     assert np.min( np.diff(unique_expiry_ids) ) > 0, f"{ticker} {d}: expiry ids are expected to be strictly increasing. Found non-increasing expiry ids: {fmt_list(unique_expiry_ids)}."
     if np.min( np.diff(expiries) ) <= 0:
         text = ""
-        for xid, expiry, date, is_am, ks in zip(unique_expiry_ids, expiries, expiries_d, is_ams, strikes):
+        for xid, expiry, date, is_am, ks in zip(unique_expiry_ids, expiries, expiries_d, is_ams, strikes, strict=True):
             text += f"Expiry ID {xid} has expiry {expiry} on date {date} (AM: {is_am}) with {len(ks)} strikes\n"
         warnings.warn("*** Error:\n"+text)
         assert np.min( np.diff(expiries) ) > 0, f"{ticker} {d}: expiries are expected to be strictly increasing."
@@ -514,7 +514,7 @@ def mk_arb_free_day2(
 
     for column, dtype in expected_schema.items():
         if result[column].dtype != dtype:
-            result[column] = result[column].astype(dtype, copy=False)
+            result[column] = result[column].astype(dtype)
 
     verify_schema(result, expected_schema, lambda: f"{ticker} {d}")
 

@@ -115,10 +115,17 @@ def test_get_listing_date() -> None:
     assert d < date(2000, 1, 1)  # SPY listed Jan 1993
 
 
-def test_adjustment_factors_aapl() -> None:
+def test_adjustment_factors_aapl(monkeypatch) -> None:
     from quantdata.massive import MassiveClient
 
-    df = MassiveClient.adjustment_factors.__wrapped__(MassiveClient(), "AAPL", date(2020, 1, 1), date(2021, 1, 1))
+    client = MassiveClient()
+    def stored_bars(ticker, start, end, adjusted, timespan):
+        folder = "adj" if adjusted else "raw"
+        path = Path(__file__).parent.parent / f"stored_data/raw/massive/bars/day/{folder}/AAPL/2020-01-01_2021-01-01_day.prq"
+        return pl.read_parquet(path)
+
+    monkeypatch.setattr(client, "fetch_bars", stored_bars)
+    df = MassiveClient.adjustment_factors.__wrapped__(client, "AAPL", date(2020, 1, 1), date(2021, 1, 1))
 
     assert isinstance(df, pl.DataFrame)
     assert df.height > 0

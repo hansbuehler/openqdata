@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Pool configuration
 ^^^^^^^^^^^^^^^^^^
@@ -28,6 +26,8 @@ The main purpose is to support functions which may use pools as different levels
 In this project we turned on the rather aggressive memory leak detection of :mod:joblib: 
 which is described `here <https://joblib.readthedocs.io/en/latest/generated/joblib.Parallel.html>`__.
 """
+
+from __future__ import annotations
 
 from cdxcore.jcpool import JCPool
 from cdxcore.jcpool import JCPoolConfig as PoolConfig

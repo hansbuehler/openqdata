@@ -2,14 +2,14 @@
 
 Only `raw` and `processed` storage locations are required. Configure before importing `quantdata`.
 
-Environment variables take precedence over TOML. `OQ_DATA_CONFIG` selects a required config file; otherwise the first existing file wins: `./qdata.toml`, `$XDG_CONFIG_HOME/qdata/config.toml` (default `~/.config/qdata/config.toml`), then `~/.qdata.toml`. Relative TOML paths resolve against the configuration file directory. Default root: `~/.local/share/qdata`.
+Environment variables take precedence over TOML. `OQ_DATA_CONFIG` selects a required config file; otherwise the first existing file wins: `./qdata.toml`, `$XDG_CONFIG_HOME/qdata/config.toml` (default `~/.config/qdata/config.toml`), then `~/.qdata.toml`. Automatic discovery retains the legacy `qdata` paths for compatibility. To use `quantdata.toml`, set `OQ_DATA_CONFIG` to its path; see `quantdata.example.toml`. Relative TOML paths resolve against the configuration file directory. Default root: `~/.local/share/qdata`.
 
 ```toml
 [data]
-root = "/data/quant_data/qdata"
+root = "/data/quant_data/quantdata"
 # Optional individual overrides:
-# raw = "/data/quant_data/qdata/raw"
-# processed = "/data/quant_data/qdata/processed"
+# raw = "/data/quant_data/quantdata/raw"
+# processed = "/data/quant_data/quantdata/processed"
 cache_mode = "on"
 ```
 
