@@ -2,6 +2,8 @@
 
 WRDS IvyDB options, zero curves, forwards, filters and processed daily surfaces.
 
+See the [full market-data pipeline and Python examples](../../../docs/market-data.md): raw cleaning and expiry validation run **before the linear fit**; `OptionsFilter` then applies separate eligibility rules and the optional **1,000-row cap**. The Everything fit uses the former preprocessing without the latter selection.
+
 ```python
 from quantdata.widb import WIDBClient
 client = WIDBClient()
@@ -121,7 +123,7 @@ included.
   Use ``ExpiryFilter`` to configure this process.
 
 In practice, ``collect_raw_day()`` is the ingestion step and ``enrich_day()`` is the main preprocessing step used by later stages.
-The former will transparently call the  latter if requested.
+`enrich_day()` calls `collect_raw_day()` when `raw_data` is omitted.
 
 The file ``day.py`` has a commandline interface which allows generating days on disk with default settings.
 ```
@@ -167,9 +169,9 @@ The file ``arbfree.py`` has a commandline interface which allows generating days
 
 ### options_filter.py
 
-[TODO]
+`OptionsFilter` is the separate, later selection stage. Defaults are ATM NMS5 in [-5, 2], at most 756 business days to expiry, combined call/put volume and open interest each at least 9, and at least ten eligible rows per expiry. Only then is the daily 1,000-row cap applied, preserving ten near-ATM rows per expiry and filling remaining slots by absolute `nms`. AM options remain eligible. The declared vega threshold is currently unused.
 
-The  ``OptionsFilter`` defines the time-series sampling rules, including limits on moneyness, days to expiry, liquidity, AM settlement handling, minimum options per expiry and the maximum number of options per day.
+These rules differ from `ExpiryFilter`'s pre-linear, expiry-level requirements of ten strikes with either side traded and four with both sides traded. See the [separate default tables and exact ordering](../../../docs/market-data.md#1-default-cleaning-before-the-linear-fit).
 
 ### timeseries.py
 
@@ -184,7 +186,12 @@ Here is an example output for 62 days "SPX" using arb-free mode ``expiry`` (that
 ```python
 
 from datetime import date
-from quantdata.widb.options_filter import build_time_series, ExpiryFilter, RawDayFilter, OptionsFilter, DateRange, PoolConfig, table_of_time_series, MkArbFree
+from quantdata.biz_calendar import DateRange
+from quantdata.pool import PoolConfig
+from quantdata.widb.day import ExpiryFilter, RawDayFilter
+from quantdata.widb.options_filter import OptionsFilter
+from quantdata.widb.timeseries import TimeSeriesDefinition, build_time_series, table_of_time_series
+from quantdata.arbfree.arbfree import MkArbFree
 from cdxcore.verbose import Context
 
 def test():
@@ -192,12 +199,15 @@ def test():
     date_range = DateRange(start=date(2025, 1, 1), end=date(2025, 3, 1))
     raw_day_filter = RawDayFilter()
     expiry_filter = ExpiryFilter()
-    mk_arb_free = MkArbFree()
+    mk_arb_free = MkArbFree(no_arb_mode="expiry")
     options_filter = OptionsFilter()
-    pool_config = PoolConfig(num_workers=0, threading=True) # no parallel processing for testing
+    pool_config = PoolConfig.off() # serial; no concurrent WRDS downloads
     verbose = Context.all
 
-    samples = build_time_series(ticker, date_range, include_fields=None, exclude_fields=None, raw_day_filter=raw_day_filter, expiry_filter=expiry_filter, mk_arb_free=mk_arb_free, options_filter=OptionsFilter, pool_config=pool_config, verbose=verbose )
+    definition = TimeSeriesDefinition(raw_day_filter=raw_day_filter, expiry_filter=expiry_filter,
+                                      mk_arb_free=mk_arb_free, options_filter=options_filter)
+    samples = build_time_series(ticker, date_range, include_fields=None, exclude_fields=None,
+                                time_series_def=definition, pool_config=pool_config, verbose=verbose)
     return samples
 
 samples = test()

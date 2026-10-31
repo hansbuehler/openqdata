@@ -30,7 +30,6 @@ from quantdata.biz_calendar import DateRange
 from quantdata.pool import PoolConfig
 from quantdata.widb.bad import BAD
 from quantdata.widb.day import (
-    RAW_PER_DAY_FIELDS,
     RAW_PER_EXPIRY_FIELDS,
     ExpiryFilter,
     RawDayFilter,
@@ -178,10 +177,11 @@ def build_time_series(
     pool_config : :class:`PoolConfig`, default ``PoolConfig.off()``
         Configuration for parallel processing. By default, no parallel processing is used.
     skip_bad_days : bool, default ``False``
-        If ``False``, processing stops upon encountering an exception when creating the data for a given day. If ``True``, processing continues but
-        building the time series will fail because of the missing date.
+        If ``False``, known bad days raise during daily processing. If ``True``, known bad days may return empty data.
+        Empty days are omitted from the packed result; unexpected processing errors still raise.
     override_cache_mode : :class:`cdxcore.subdir.CacheMode` | None, default ``None``
         If not ``None``, overrides the cache mode for the enriched day data. Set to ``"update"`` to refresh the underlying raw cache.
+        With caching off or read-only, daily frames are computed/read once and packed directly without a cache-write prerequisite.
     verbose : :class:`cdxcore.verbose.Context`, default ``Context.all``
         Verbose context for logging.
 
@@ -221,15 +221,19 @@ def build_time_series(
     # this is in multi-processing mode
     # --------------------------------
 
-    _ = _assemble_time_series(
-                        ticker=ticker,
-                        date_range=date_range,
-                        time_series_def=time_series_def,
-                        pool_config=pool_config,
-                        skip_bad_days=skip_bad_days,
-                        override_cache_mode=override_cache_mode,
-                        verbose=verbose
-                    )
+    daily_cache_mode = CacheMode(override_cache_mode if override_cache_mode is not None else _processing_timeseries.cache_mode)
+    # Precompute only when daily results can be written and subsequently read.
+    # Otherwise load/compute each frame once and retain it directly in memory.
+    if daily_cache_mode.write:
+        _ = _assemble_time_series(
+                            ticker=ticker,
+                            date_range=date_range,
+                            time_series_def=time_series_def,
+                            pool_config=pool_config,
+                            skip_bad_days=skip_bad_days,
+                            override_cache_mode=override_cache_mode,
+                            verbose=verbose
+                        )
 
     verbose.write(lambda: f"Aggregating {'' if time_series_def.mk_arb_free is None else 'arbitrage-free '}data for ticker {ticker} for {len(dates)} business days from {fmt_date(dates[0])} to {fmt_date(dates[-1])} {'excluding' if date_range.exclude_half_days else 'including'} half days:")
     verbose.report(1,lambda: f"Options filter: {time_series_def.options_filter}")
@@ -246,7 +250,7 @@ def build_time_series(
 
     def load_data():
 
-        thread_pool = JCPool(num_workers=pool_config.num_workers, threading=True)
+        thread_pool = JCPool(num_workers=pool_config.num_workers, threading=True if daily_cache_mode.write else pool_config.threading)
         results = {} # by date
         max_options = 0
 
@@ -260,8 +264,8 @@ def build_time_series(
                                     expiry_filter=time_series_def.expiry_filter,
                                     mk_arb_free=time_series_def.mk_arb_free, 
                                     options_filter=time_series_def.options_filter,
-                                    override_cache_mode="cacheonly", 
-                                    raise_if_bad_day=False,
+                                    override_cache_mode="cacheonly" if daily_cache_mode.write else daily_cache_mode,
+                                    raise_if_bad_day=False if daily_cache_mode.write else not skip_bad_days,
                                     cache_generate_only=False,
                                     verbose=Context.quiet )
                 except CacheMustExistError as e:
@@ -385,10 +389,10 @@ def extract_day_block( time_series : Mapping, isample : int, *fields, **rename_f
 
     fields     = sorted(set(fields)|set(rename_fields))
     is_valid_t = time_series['is_valid'][isample,:].astype(bool, copy=False)
-    ttey_t     = time_series['tte_y'][isample,:]
-    slices     = { k: time_series[k][isample,:][is_valid_t] for k in fields }
+    ttey_t     = time_series['tte_y'][isample,:][is_valid_t]
+    slices     = { k: time_series[k][isample,:] if k in _PER_DAY_FIELDS else time_series[k][isample,:][is_valid_t] for k in fields }
 
-    r = PrettyObject({ k: list() if not k in RAW_PER_DAY_FIELDS else None for k in fields })
+    r = PrettyObject({ k: list() if not k in _PER_DAY_FIELDS else None for k in fields })
 
     uttys = np.unique(ttey_t)
     for utty in uttys:
@@ -396,8 +400,8 @@ def extract_day_block( time_series : Mapping, isample : int, *fields, **rename_f
         if np.sum(mask) == 0:
             continue
         for k in fields:
-            v = np.asarray(slices[k][mask])
-            if k in RAW_PER_DAY_FIELDS:
+            v = np.asarray(slices[k] if k in _PER_DAY_FIELDS else slices[k][mask])
+            if k in _PER_DAY_FIELDS:
                 assert np.all( v[0] == v ), f"Internal error: expected all values for field '{k}' to be the same for the same day, but found different values: {v}. Please contact the authors with an example."
                 if r[k] is None:
                     r[k] = v[0]
@@ -409,7 +413,7 @@ def extract_day_block( time_series : Mapping, isample : int, *fields, **rename_f
                 r[k].append(v)
  
     for k in fields:
-        if k in RAW_PER_DAY_FIELDS:
+        if k in _PER_DAY_FIELDS:
             assert not r[k] is None
         elif k in RAW_PER_EXPIRY_FIELDS:
             r[k] = np.array(r[k])
