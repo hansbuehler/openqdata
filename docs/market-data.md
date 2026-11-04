@@ -1,5 +1,7 @@
 # WIDB market-data pipeline and default filters
 
+WRDS/OptionMetrics observations and the resulting fitted caches are **licensed source datasets**. The extracted **public benchmark datasets** are documented in the [benchmark pipeline](../src/quantdata/benchmark_data/widb/PUB_PIPELINE.md); licensed observations, caches and models remain outside Git.
+
 The pipeline has three distinct kinds of selection: **market-data cleaning before any linear fit**, **the linear fit's own expiry/strike handling**, and **the optional eligible-option selection, capped at 1,000 rows**. The first two also apply to the SANOS “Everything” surface. Only the last produces the paper-style selected population.
 
 One option row represents a **paired call and put at one strike and expiry/settlement**, not two separately counted contracts. Thus the 1,000-option cap means at most 1,000 such rows per day. A retained row requires usable quotes for both sides of the pair.
@@ -47,11 +49,19 @@ Business-day maturity uses the NYSE calendar, with 0.8 business days subtracted 
 | Synthetic prices | Combine market calls with put-call-parity synthetic calls; remove nonpositive synthetic bid/ask or unusably small spreads. |
 | `min_pure_spread` | **1e-6**, in pure-price units. The equivalent synthetic-call spread check is scaled by the discounted forward. |
 | `min_implied_vol`, `max_implied_vol` | **0.01, 5.0**: bounded implied-volatility inversion, corresponding to 1%–500% annualized volatility. Remove boundary solutions that cannot reprice the quote within tolerance. |
-| `normalize` | `False`. This is separate from `OptionsFilter.normalize`. Pure strike and price fields are forward-normalized regardless. |
 
 The 10/4 traded-strike checks are made before and again after synthetic-price cleaning, before the final implied-volatility checks. Positive volume means **greater than zero**, not the later `log10(1+volume) >= 1` threshold. These are **expiry-level requirements for estimating the forward**: an otherwise valid, untraded strike can remain in an eligible expiry. There is no per-row minimum volume or open interest at this stage, and no 1,000-row cap, maturity cap or NMS5 window.
 
-Write `DF` for the discount factor and `F` for the implied forward: `pure_strike = strike / F` and pure call prices are discounted call prices divided by `DF * F`. The implied-volatility price tolerance is `min(0.1 * pure_spread, 1e-6)`; the boundary-repricing check allows 1.1 times that tolerance. Enrichment also computes `nms`, `nms_atm`, Greeks and combined liquidity fields; computing these fields does not select an ATM subset.
+`ExpiryFilter` has no normalization switch. The former unused `normalize` field was removed in configuration version **0.6**. Its legacy default (`normalize=False`) label and hash encoding are retained internally, preserving the existing enriched-data and downstream fit/time-series **cache IDs**. The bumped dependency **version** makes old processed entries stale at those same IDs; normal caching recomputes them, while cache-only access rejects the version mismatch. Raw/provider caches are unaffected.
+
+Write `F` for the implied forward and `DF` for the discount factor. There are two different normalizations to distinguish here:
+
+- **Forward normalization always happens during enrichment**: `pure_strike = strike / F` and `pure_*_price = call_price / (DF * F)`. These dimensionless fields are the inputs to the no-arbitrage fit. The ordinary strike, forward and quote fields retain their cash units.
+- **Spot normalization is a later output transformation**, controlled by the active `OptionsFilter.normalize` setting (default `True`). It divides the selected cash-price fields and strike/forward by spot, retains the original spot as `spot_ref`, and adds `spot_ret`. It leaves the `pure_*` fitting inputs unchanged. See the separate eligibility table below.
+
+For example, with strike 105, forward 102 and spot 100, enrichment produces `pure_strike = 105 / 102` while retaining `strike = 105`. Later spot normalization changes `strike` to `105 / 100 = 1.05`; `pure_strike` remains `105 / 102`.
+
+The implied-volatility price tolerance is `min(0.1 * pure_spread, 1e-6)`; the boundary-repricing check allows 1.1 times that tolerance. Enrichment also computes `nms`, `nms_atm`, Greeks and combined liquidity fields; computing these fields does not select an ATM subset.
 
 Source: [day.py](../src/quantdata/widb/day.py), [bad.py](../src/quantdata/widb/bad.py), [calendar and NMS5](../src/quantdata/biz_calendar.py).
 
@@ -79,7 +89,8 @@ Source: [WIDB arbfree adapter](../src/quantdata/widb/arbfree.py), [MkArbFree and
 | `min_opt_per_expiry` | **10** eligible rows per expiry, checked after the preceding filters and before the cap. |
 | `max_num_options` | **1,000 total rows per day**, across all retained expiries. |
 | `normalize` | **True**: normalize selected cash-price fields by spot and add `spot_ref` / `spot_ret`. This does not change the pure fitting inputs or selected identities. Use `False` when passing a frame back into WIDB fitting adapters. |
-| `min_vegaSqrtVar` | Declared default **0.001**, but **not applied by the current `_filter` implementation**. There is no effective vega threshold. |
+
+`NMS5` uses five-business-day regularization (`EPS = 5 / 252`) and the default log-strike scale `log(1.1)`. The fixed-scale `nms` uses that scale throughout; `nms_atm` uses the expiry's ATM volatility in the maturity-dependent term while retaining the default scale in the regularization term.
 
 **The cap is a second operation after eligibility.** If more than 1,000 rows remain, reserve ten per expiry, including the nearest positive and negative `nms` where available, and fill those reservations with the smallest absolute `nms`. Fill the remaining daily slots globally by smallest absolute **`nms`**, with stable ordering. The cap ranks the fixed-scale NMS5 field `nms`; the eligibility window uses ATM-volatility NMS5 `nms_atm`. It does not span the entire strike range uniformly. If eligibility leaves fewer than 1,000 rows, all of them remain.
 
@@ -95,7 +106,7 @@ Other defaults are `mid_fit_weight=0.1`, `min_half_spread=1e-4`, and no DLV floo
 
 Evaluate with `compute_market_fit(..., and_vols=False)` on the **entire chosen input population**, omitting `masks` to include internally masked rows. `pcnt_fit` is the **fraction outside** bid/ask, despite its name. `mean_err` and `median_err` are conditional on being outside, in half-spread units with the `min_half_spread` floor; zero-excess days have zero conditional statistics. A feasible model can still fit quotes poorly. Stored model fields `input_index` and `masks` explain the active objective population.
 
-The completed comparisons in {download}`SANOS.md <../SANOS.md>` evaluate both the Everything model and filtered model on identical selected quotes, and separately retain the full-book statistics. Their independent post-repair certificates check density bounds, mass, first moment, full-range calendar and original quote/slack constraints. The permitted absolute tolerance is 1e-5, trying 1e-7 first; this extra audit/recovery layer belongs to the recorded runs, not to `OptionsFilter`.
+The current rerun and completed comparisons are linked from {download}`SANOS.md <../SANOS.md>`; the rerun includes daily within-bid/ask, conditional excess and recorded fit-time plots. The completed comparisons evaluate both the Everything model and filtered model on identical selected quotes, and separately retain the full-book statistics. Their independent post-repair certificates check density bounds, mass, first moment, full-range calendar and original quote/slack constraints. The permitted absolute tolerance is 1e-5, trying 1e-7 first; this extra audit/recovery layer belongs to the recorded runs, not to `OptionsFilter`.
 
 ## 5. Python example: clean, fit linearly, select, then smooth
 

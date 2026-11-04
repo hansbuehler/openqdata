@@ -41,3 +41,5 @@ QUANTDATA_TEST_PYTHON=/path/to/environment/bin/python git hook run pre-commit
 ```
 
 The hook is configured locally for this checkout; other clones can opt in with the command above. It does not replace the Python-version CI matrix. To disable this checkout's hook configuration, use `git config --unset core.hooksPath`.
+
+The tracked `post-checkout`, `post-commit`, `post-merge` and `pre-push` hooks run Git LFS for the public benchmark files. After selecting `.githooks`, run `git lfs install --local` to configure the checkout. If you later unset `core.hooksPath`, run that command again to install the LFS hooks in the default location. Automated regeneration sets `QUANTDATA_TEST_PYTHON` to its explicit project interpreter when committing.

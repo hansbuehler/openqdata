@@ -130,6 +130,12 @@ def test_adjustment_factors_aapl(monkeypatch) -> None:
     assert isinstance(df, pl.DataFrame)
     assert df.height > 0
     assert set(df.columns) == {"date", "adjfactor"}
+    before = df.filter(pl.col("date").is_in([date(2020, 8, 27), date(2020, 8, 28)]))
+    after = df.filter(pl.col("date").is_in([date(2020, 8, 31), date(2020, 9, 1)]))
+    assert before["date"].to_list() == [date(2020, 8, 27), date(2020, 8, 28)]
+    assert after["date"].to_list() == [date(2020, 8, 31), date(2020, 9, 1)]
+    assert before["adjfactor"].to_list() == pytest.approx([0.25, 0.25])
+    assert after["adjfactor"].to_list() == pytest.approx([1., 1.])
 
 
 # ---------------------------------------------------------------------------

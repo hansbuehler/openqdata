@@ -25,3 +25,16 @@ Sources: `fred`, `yahoo`, `widb`, `vixdata`, `massive`, `tickers`; numerical sur
 See [configuration](docs/configuration.md), [commands](docs/commands.md), [testing](docs/testing.md), [Massive API coverage and trade defaults](docs/massive.md) and [consolidation review](docs/review.md). Initial consolidation used offline tests. Subsequent [live validation](docs/live-validation.md) and [reference-model comparisons](docs/reference-validation.md) document the authorized download and solver checks.
 
 The [WIDB market-data pipeline](docs/market-data.md) documents the default cleaning before linear fitting separately from eligible-option selection and the 1,000-row cap, with configuration references and executable Python examples.
+
+See [SANOS fitting results](SANOS.md) for the historical comparisons and the current rerun’s fit-quality and runtime plots.
+
+The [WIDB benchmark pipeline](src/quantdata/benchmark_data/widb/PUB_PIPELINE.md) documents extraction of versioned benchmark data from completed licensed source fits.
+
+Public benchmark Parquet files use Git LFS. With Git LFS installed, fetch them using:
+
+```sh
+git lfs install --local
+git lfs pull
+```
+
+For a source-only checkout, prefix the clone command with `GIT_LFS_SKIP_SMUDGE=1`; benchmark files can be fetched later.

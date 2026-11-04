@@ -20,3 +20,5 @@ Set `OQ_DATA_TEST_MODE=1` and `OQ_DATA_TEST_ROOT` to an existing fixture root to
 - `widb_sanos_day.py`: Arbitrage-Free Market Data Filter. Public entry points: `fit_sanos_day`.
 
 Processing modules provide `python -m quantdata.<source>.<module> --help`. New adapters accept a function name and `--params` containing JSON keyword arguments. Existing specialized commands retain their own options.
+
+`widb_sanos_day.fit_sanos_day` caches the paper-style licensed fit: full-book linear cleaning, native-coordinate option selection, then a separate SANOS surface fit. Its output is the standard fitted daily DataFrame and its cache identity includes the source, eligibility and SANOS configurations.

@@ -40,7 +40,7 @@ from quantdata.widb.day import (
 # Sample days for a given ticker
 # ======================================================================
 
-@version("0.62")
+@version("0.63")
 @dataclass(frozen=True)
 class OptionsFilter:
     """
@@ -54,7 +54,6 @@ class OptionsFilter:
     max_business_days_to_expiry: int = 252*3    #: Maximum business days to expiry.
     max_nms: float|tuple[float,float] = (-5.,2.) #: Maximum |NMS5| or a tuple with NMS5_lower<0<NMS5_upper.
     nms_use_atm : bool = True                   #: Whether to use NMS5 with the ATM volatility instead of the actual NMS5. 
-    min_vegaSqrtVar: float = 0.001              #: Minimum vega * sqrt(tte), i.e. the derivative in sqrtVar: BSsq(K,sqrtVar) = BSvol(K,sqrtVar/sqrt(t),t). This is a measure of how much the option price moves with volatility, normalized by time to expiry.
     min_log_volume: float = 1.0                 #: Minimum log volume. 
     min_log_open_interest: float = 1.0          #: Minimum log open interest. 
     remove_am: bool = False                     #: Whether to remove options that settled at the AM price. 
@@ -68,13 +67,12 @@ class OptionsFilter:
             verify_inp(self.max_nms[0] < 0 < self.max_nms[1], lambda : f"'max_nms' tuple must have negative first element and positive second element, found {self.max_nms}")       
         else:
             verify_inp(self.max_nms > 0, lambda : f"'max_nms' must be positive, found {self.max_nms}")
-        verify_inp(self.min_vegaSqrtVar >= 0, lambda : f"'min_vegaSqrtVar' must be non-negative, found {self.min_vegaSqrtVar}")
         verify_inp(self.min_log_volume >= 0, lambda : f"'min_log_volume' must be non-negative, found {self.min_log_volume}")
         verify_inp(self.min_log_open_interest >= 0, lambda : f"'min_log_open_interest' must be non-negative, found {self.min_log_open_interest}")
         verify_inp(self.min_opt_per_expiry > 0, lambda : f"'min_opt_per_expiry' must be positive, found {self.min_opt_per_expiry}")
 
     def __str__(self):#by convention use a some what readable string with comma separated key=value pairs
-        return f"nopt={self.max_num_options},bdte={self.max_business_days_to_expiry},nms{'at' if self.nms_use_atm else ''}={self.max_nms},lvolu={self.min_log_volume},loi={self.min_log_open_interest},rmam={self.remove_am},vegaSV={self.min_vegaSqrtVar},mxpp={self.min_opt_per_expiry}"
+        return f"nopt={self.max_num_options},bdte={self.max_business_days_to_expiry},nms{'at' if self.nms_use_atm else ''}={self.max_nms},lvolu={self.min_log_volume},loi={self.min_log_open_interest},rmam={self.remove_am},mxpp={self.min_opt_per_expiry}"
     
     def _filter(self, ticker : str, d : dt.date, df : pd.DataFrame) -> pd.DataFrame:
         """

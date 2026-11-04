@@ -604,7 +604,7 @@ SCHEMA_ENRICHED_DAY = SCHEMA_RAW_DAY | {
 ENRICHED_PER_DAY_FIELDS = RAW_PER_DAY_FIELDS
 ENRICHED_PER_EXPIRY_FIELDS = RAW_PER_EXPIRY_FIELDS|{'fwd'}
 
-@version("0.5")
+@version("0.6")
 @dataclass(frozen=True)
 class ExpiryFilter:
     """ How to filter expiries to be able to compute implied forwards """
@@ -613,7 +613,6 @@ class ExpiryFilter:
     min_pure_spread       : float = 1E-6
     min_implied_vol       : float = 0.01
     max_implied_vol       : float = 5.0
-    normalize             : bool = False
 
     def __post_init__(self):
         verify_inp(self.num_min_either_traded >= 0, lambda : f"'num_min_either_traded' must be non-negative, found {self.num_min_either_traded}")
@@ -623,7 +622,11 @@ class ExpiryFilter:
         verify_inp(self.max_implied_vol > self.min_implied_vol, lambda : f"'max_implied_vol' must be greater than 'min_implied_vol', found max_implied_vol={self.max_implied_vol} and min_implied_vol={self.min_implied_vol}")
 
     def __str__(self):#by convention use a some what readable string with comma separated key=value pairs
-        return f"{'nrm,' if self.normalize else 'nat,'}eth={self.num_min_either_traded},bth={self.num_min_both_traded},mps={self.min_pure_spread},miv={self.min_implied_vol},xiv={self.max_implied_vol}"
+        return f"nat,eth={self.num_min_either_traded},bth={self.num_min_both_traded},mps={self.min_pure_spread},miv={self.min_implied_vol},xiv={self.max_implied_vol}"
+
+    def __unique_hash__(self, unique_hash, debug_trace) -> tuple[str, dict]:
+        # Preserve the former normalize=False encoding for existing cache IDs.
+        return type(self).__qualname__, vars(self) | {"normalize": False}
 
 def _uid(ticker, d, raw_day_filter, expiry_filter) -> str:
     return f"enrich/{named_unique_filename48_8(f'{str(expiry_filter)},{str(raw_day_filter)}',expiry_filter,raw_day_filter)}"+\

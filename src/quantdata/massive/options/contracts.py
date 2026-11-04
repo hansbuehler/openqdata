@@ -124,7 +124,7 @@ class ContractsFilter:
 # -----------------------------
 
 @_cache(fmt=SubDir.POLARS_PARQUET).cache(
-    "0.24",
+    "0.25",
     dependencies=[
         MassiveClient.list_all_contracts_expiring_after_day,
         MassiveClient.fetch_day_summary,
@@ -199,7 +199,7 @@ def filter_contracts(
         Data frame with schema :data:`SCHEMA` of filtered contracts with added fields:
 
         - reject_code (int): Rejection reason code
-        - spot_prev_close (float): Previous close adjusted spot price
+        - spot_prev_close (float): Previous close unadjusted spot price
         - nms (float): Scaled moneyness metric using :class:`NMS`
         - nms5 (float): Scaled moneyness metric using :class:`NMS5`
         - approx_cash_vol_prev_m (float): Previous day approx cash volume (USD millions)
@@ -223,7 +223,7 @@ def filter_contracts(
     context = PrettyObject()
     context.prev_d = add_business_days( d, -1, exclude_half_days=exclude_half_days )  # previous business day (NB: if d is a Monday then this is the previous Friday, so we correctly skip the weekend)
     context.close_adj_prev = client.fetch_day_summary( underlying, context.prev_d, adjusted=True, can_be_none=False )["close"]
-    context.close_unadj_prev = client.fetch_day_summary( underlying, context.prev_d, adjusted=True, can_be_none=False )["close"]
+    context.close_unadj_prev = client.fetch_day_summary( underlying, context.prev_d, adjusted=False, can_be_none=False )["close"]
     context.close_adj = client.fetch_day_summary(underlying, d, adjusted=True, can_be_none=False)[ "close" ]
     ocv_today_unadj = client.fetch_day_summary(underlying, d, adjusted=False, can_be_none=False)
     context.close_unadj = ocv_today_unadj["close"]

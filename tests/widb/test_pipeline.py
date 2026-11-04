@@ -16,12 +16,13 @@ import numpy as np
 import pandas as pd
 import pytest
 from cdxcore.subdir import SubDir
+from cdxcore.uniquehash import named_unique_filename48_8
 from cdxcore.verbose import Context
 
 from quantdata.arbfree.arbfree import ArbFreePricer, MkArbFree
 from quantdata.biz_calendar import DateRange
 from quantdata.pool import PoolConfig
-from quantdata.widb import WIDBClient, timeseries
+from quantdata.widb import WIDBClient, arbfree, day, timeseries
 from quantdata.widb.arbfree import mk_arb_free_day
 from quantdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enrich_day
 from quantdata.widb.options_filter import OptionsFilter, filter_options_day
@@ -29,6 +30,14 @@ from quantdata.widb.timeseries import TimeSeriesDefinition, build_time_series
 
 FIXTURES = Path(__file__).resolve().parents[1] / "stored_data"
 DAY = date(2005, 11, 21)
+
+
+def test_options_filter_ids_follow_current_configuration():
+    normalized = OptionsFilter()
+    native = OptionsFilter(normalize=False)
+    assert named_unique_filename48_8(str(normalized), normalized) != named_unique_filename48_8(str(native), native)
+    assert "min_vegaSqrtVar" not in vars(normalized)
+    assert "vegaSV" not in str(normalized)
 
 
 @pytest.fixture
@@ -58,6 +67,21 @@ def market_day(provider_inputs) -> tuple[pd.DataFrame, pd.DataFrame]:
     enriched = enrich_day("SPX", DAY, raw_data=raw, override_cache_mode="off", verbose=Context.quiet)
     assert not raw.empty and not enriched.empty
     return raw, enriched
+
+
+def test_expiry_filter_removal_preserves_existing_cache_ids() -> None:
+    # These are the default IDs recorded before removing normalize=False.
+    config = ExpiryFilter()
+    raw = RawDayFilter()
+    definition = TimeSeriesDefinition()
+    assert not hasattr(config, "normalize")
+    expected = "enrich/nat,eth=10,bth=4,mps=1e-06,miv=0.01,xiv c0d81d91/SPX/2005-11-21"
+    assert day._uid("SPX", DAY, raw, config) == expected
+    assert arbfree._uid("SPX", DAY, raw, config, definition.mk_arb_free) == "arbfree/nat,eth=10,bth=4,mps=1e-06,miv=0.01,xiv 4e8d2caa/SPX/2005-11-21"
+    assert timeseries.build_time_series_uid("SPX", DateRange(DAY, DAY), None, None, definition) == "bid=0.011,nat,eth=10,bth=4,mps=1e-06,mi 32131684/SPX/2005-11-21_2005-11-21x/incl_all,excl_none 95d383fa"
+    for name, value in dict(num_min_either_traded=11, num_min_both_traded=5,
+                            min_pure_spread=2e-6, min_implied_vol=.02, max_implied_vol=4.).items():
+        assert day._uid("SPX", DAY, raw, replace(config, **{name: value})) != expected
 
 
 def test_raw_cleaning_rejects_bad_quotes_before_pairing(provider_inputs, monkeypatch) -> None:
@@ -347,6 +371,22 @@ def test_time_series_default_writes_and_reuses_daily_cache_without_provider(tmp_
             assert backends == [False, True]  # configured computation, threaded cache reads
             for name in ['lookup_secid', 'options', 'forwards', 'zero_curve', 'spot_price']:
                 patch.setattr(client, name, blocked)
+            from cdxcore.subdir import CacheMustExistError
+            enrich = checks['enrich_day']
+            original = enrich('SPX', checks['DAY'], override_cache_mode='cacheonly', verbose=checks['Context'].quiet)
+            info = enrich.cache_info
+            directory, filename, path = info.sub_dir, info.filename, info.full_file_name
+            directory.write(filename, original, version='pre-normalize-removal')
+            with pytest.raises(CacheMustExistError):
+                enrich('SPX', checks['DAY'], override_cache_mode='cacheonly', verbose=checks['Context'].quiet)
+            assert directory.get_version(filename) == 'pre-normalize-removal'
+            fresh = enrich('SPX', checks['DAY'], override_cache_mode='on', verbose=checks['Context'].quiet)
+            assert enrich.cache_info.full_file_name == path and not enrich.cache_info.last_cached
+            # Parquet can restore object strings as pandas StringDtype.
+            original = checks['day'].restore_object_strings(original, checks['day'].SCHEMA_ENRICHED_DAY)
+            checks['pd'].testing.assert_frame_equal(fresh, original)
+            enrich('SPX', checks['DAY'], override_cache_mode='cacheonly', verbose=checks['Context'].quiet)
+            assert enrich.cache_info.last_cached
             # A new aggregate key forces assembly from the existing daily cache.
             fields = {{'is_valid', 'pure_strike'}}
             cached = ts.build_time_series(include_fields=fields, **kwargs)
@@ -383,3 +423,22 @@ def test_time_series_bad_day_raises_or_skips_explicitly(provider_inputs, monkeyp
     with pytest.warns(UserWarning, match="no data after filtering"):
         series = build_time_series(skip_bad_days=True, **kwargs)
     assert series["dates"] == [DAY] and series["is_valid"].any()
+
+
+def test_private_filtered_cache_fits_after_selection(linear_day, monkeypatch):
+    from quantdata.arbfree.widb_sanos_day import fit_sanos_day
+    enriched, linear = linear_day
+    expected = filter_options_day("SPX", DAY, source_data=linear, options_filter=OptionsFilter(normalize=False), verbose=Context.quiet)
+    calls = []
+    original = MkArbFree.__call__
+    def record(self, *args, **kwargs):
+        calls.append(sum(len(k) for k in kwargs["strikes"]))
+        return original(self, *args, **kwargs)
+    monkeypatch.setattr(MkArbFree, "__call__", record)
+    result = fit_sanos_day("SPX", DAY, MkArbFree(smoothness=.25), override_cache_mode="off", verbose=Context.quiet)
+    assert calls == [len(enriched), len(expected)]
+    assert calls[1] < calls[0]
+    keys = ["expiry_id", "pure_strike", "pure_bid_price", "pure_ask_price"]
+    retained = expected.loc[expected.expiry_id.isin(result.expiry_id), keys].reset_index(drop=True)
+    pd.testing.assert_frame_equal(result[keys].reset_index(drop=True), retained)
+    assert np.isfinite(result.pure_fitX_price).all()

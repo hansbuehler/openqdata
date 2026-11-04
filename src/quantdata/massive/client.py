@@ -31,6 +31,7 @@ import time as pytime
 import warnings as warnings
 from collections.abc import Mapping
 from datetime import date
+from urllib.parse import urlsplit
 
 import polars as pl
 import requests as requests
@@ -181,13 +182,17 @@ class MassiveClient(object):
             else self._get
         )
 
-    @version("0.1")
+    @version("0.2")
     def _get(self, url: str, params: dict | None = None) -> dict:
-        """`
-        GET wrapper that injects apiKey and raises for HTTP errors.
+        """
+        GET wrapper restricted to the API origin; redirects are rejected.
         Do not call this function, call ``self.get`` which is optionally
         cached in a temporary directory for speed
         """
+        target, origin = urlsplit(url), urlsplit(self.BASE_URL)
+        # Never attach credentials to a response-supplied external URL.
+        if (target.scheme, target.netloc) != (origin.scheme, origin.netloc):
+            raise ValueError("Massive request URL must use the configured API origin")
         MASSIVE_token = MassiveClient.get_token()
         if params is None:
             params = {"apiKey": MASSIVE_token}
@@ -197,7 +202,9 @@ class MassiveClient(object):
         while True:
             e_ = None
             try:
-                r = self.session.get(url, params=params, timeout=60 * cnt)
+                r = self.session.get(url, params=params, timeout=60 * cnt, allow_redirects=False)
+                if 300 <= r.status_code < 400:
+                    raise ValueError("Massive API redirects are not allowed")
                 r.raise_for_status()
                 return r.json()
             except requests.exceptions.RetryError as e:

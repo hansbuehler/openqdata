@@ -1,21 +1,24 @@
-"""
-Tests for FRED rate fetching utilities.
-
-Mirrors the checks done manually in poly/notebooks/test_rates.ipynb.
-"""
-
-from __future__ import annotations
-
+"""Exercise FRED response conversion without network access."""
 from datetime import date
+from types import SimpleNamespace
 
 import polars as pl
+import pytest
+
+import quantdata.fred.rates as rates
 
 
-def test_load_fred_rates() -> None:
-    from quantdata.fred.rates import load_fred_rates
-
-    df = load_fred_rates(date(2022, 1, 1), date(2024, 1, 1))
-
-    assert isinstance(df, pl.DataFrame)
-    assert df.height > 0
-    assert set(df.columns) == {"date", "on", "sofr", "effr", "dgs1mo", "dgs3mo", "dgs6mo"}
+@pytest.mark.parametrize("observations", [[], [
+    {"date": "2025-01-02", "value": "."}, {"date": "2025-01-03", "value": "4.35"},
+]])
+def test_fetch_fred_series_converts_dates_values_and_missing(monkeypatch, observations):
+    monkeypatch.setattr(rates.env, "require_live", lambda provider: None)
+    def get(url, *, params, timeout):
+        assert params["series_id"] == "SOFR"
+        assert params["observation_start"] == "2025-01-02" and params["observation_end"] == "2025-01-03"
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"observations": observations})
+    monkeypatch.setattr(rates.requests, "get", get)
+    result = rates._fetch_fred_series("test-key", "SOFR", date(2025, 1, 2), date(2025, 1, 3))
+    assert result.schema == {"date": pl.Date, "SOFR": pl.Float64}
+    assert result["date"].to_list() == ([date(2025, 1, 2), date(2025, 1, 3)] if observations else [])
+    assert result["SOFR"].to_list() == ([None, 4.35] if observations else [])
