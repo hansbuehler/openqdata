@@ -21,7 +21,11 @@ Conditional excess is measured in half-spreads for options outside the original 
 
 Each column shows one smoothness level. Dates and each metric’s vertical scale are shared across columns. The first two rows report the same saved model’s bid/ask coverage on the full eligible book and on the filtered book, respectively. The filtered model evaluates other maturities using its usual interpolation and extrapolation; 0.50% of full-book observations across the three smoothness levels fall outside the fitted maturity range. Conditional errors and option counts refer to each model’s input population. Each counted paired strike/expiry observation corresponds to a call and put in the public extract.
 
+### Fitting to all options*
+
 ![Everything](docs/figures/sanos-all-population-comparison.png)
+
+### Fitting to 1000 filtered options*
 
 ![Filtered](docs/figures/sanos-flt-population-comparison.png)
 
