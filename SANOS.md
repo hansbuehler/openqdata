@@ -23,9 +23,15 @@ Each column shows one smoothness level. Dates and each metric’s vertical scale
 
 ### Fitting to all options*
 
+The full eligible book consists of paired observations that pass the [default raw-quote and expiry-validation pipeline](docs/market-data.md#1-default-cleaning-before-the-linear-fit); it has no subsequent 1,000-option selection.
+
 ![Everything](docs/figures/sanos-all-population-comparison.png)
 
 ### Fitting to 1000 filtered options*
+
+After the default cleaning and a full-book linear fit, the [eligible-option filter](docs/market-data.md#3-separate-eligible-option-filter-and-1000-row-cap) retains options with at most 756 business days to expiry, ATM-based NMS5 between -5 and 2, combined volume and open interest each at least 9, and at least 10 eligible strikes per expiry. It retains AM and PM options and caps the selection at 1,000 paired observations, prioritizing strikes near ATM while reserving strikes per expiry. The smooth surface is then fitted to that selection.
+
+Filtering mainly improves speed: at smoothness 0.25, median fit time falls from 9.79 seconds for the full book to 1.22 seconds for the filtered book. On the same filtered options, mean daily bid/ask coverage rises modestly from 93.64% for the full-book model to 95.04% for the filtered model. Individual days can differ much more: on 11 April 2025, the corresponding 0.25 fits cover 39.1% and 90.9%, respectively.
 
 ![Filtered](docs/figures/sanos-flt-population-comparison.png)
 
