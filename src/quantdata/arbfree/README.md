@@ -2,6 +2,8 @@
 
 SANOS arbitrage-free option surfaces, density projection and fitting utilities.
 
+**Performance:** See [historical SPX fit quality and runtime](../../../SANOS.md) for bid/ask coverage on the full and filtered populations, conditional errors, option counts, and runtimes at each smoothness level.
+
 ```python
 from quantdata.arbfree.arbfree import MkArbFree
 config = MkArbFree()
