@@ -57,9 +57,7 @@ def parse_cboe_vix_csv(content: bytes) -> pl.DataFrame:
 def refresh_cboe_vix(*, timeout_seconds: float = 30.0) -> pl.DataFrame:
     """Fetch official Cboe VIX closes and replace the native raw-data cache.
 
-    The shared raw location is determined solely by ``quantdata.env``.  On the
-    production host this resolves to the canonical AAE-NAS data root rather
-    than a user-specific filesystem path.
+    The raw-data location is determined by ``quantdata.env``.
     """
     env.require_live("Cboe")
     verify_inp(timeout_seconds > 0.0, lambda: "timeout_seconds must be positive")

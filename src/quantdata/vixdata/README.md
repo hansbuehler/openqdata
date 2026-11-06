@@ -25,18 +25,14 @@ Processing modules provide `python -m quantdata.<source>.<module> --help`. New a
 
 **Dataset:** official Cboe daily VIX OHLC history.  It is used as an
 independent market-level benchmark for 30-calendar-day S&P 500 implied
-variance, including the DYSANOS VIX comparison.  It is not an option-quote
+variance in academic research.  It is not an option-quote
 dataset and must not be used as a substitute for the WRDS option surface.
 
 **Canonical location:** resolve the location through
 `quantdata.env.locations("vixdata", fmt_raw=SubDir.POLARS_PARQUET).raw`; do
-not hard-code a data-root path.  On the current production configuration the
-two cache artifacts are:
-
-| Artifact | Production path |
-| --- | --- |
-| Data | `/mnt/nas/quantdata/vixdata/cboe/vix_eod.prq` |
-| Provenance manifest | `/mnt/nas/quantdata/vixdata/cboe/vix_eod_metadata.json` |
+not hard-code a data-root path. Under the configured raw-data root, the cache
+contains `vixdata/cboe/vix_eod.prq` and its provenance manifest
+`vixdata/cboe/vix_eod_metadata.json`.
 
 The manifest records the source URL, UTC retrieval time, observation count,
 date range, and units.  The data and manifest are deliberately external to
@@ -44,7 +40,7 @@ Git; this README is the repository-tracked contract other agents should use.
 
 **Schema:** `date` (`Date`), `open`, `high`, `low`, and `close` (`Float64`).
 Levels are annualized implied-volatility percentage points.  `close` is the
-official end-of-day series used by current DYSANOS diagnostics.
+official end-of-day series used in research diagnostics.
 
 **Source and refresh:** Cboe's public
 [`VIX_History.csv`](https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX_History.csv).

@@ -1,6 +1,6 @@
 # quantdata
 
-Standalone data access extracted from `openquantai/quant_data`. Targets Python 3.13 and supports Python 3.12–3.14. The distribution and import namespace are both `quantdata`. Install in an environment separate from the original quantdata checkout.
+A data access and processing pipeline for academic research, extracted from `openquantai/quant_data`. Targets Python 3.13 and supports Python 3.12–3.14. The distribution and import namespace are both `quantdata`. Install in an environment separate from the original quantdata checkout.
 
 ```sh
 git clone git@github.com:openquantai/quantdata.git

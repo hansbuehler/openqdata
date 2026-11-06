@@ -10,7 +10,7 @@
 ## System and Environment
 
 - Use the existing ``~/vqdata`` repository on Linux and the conda ``%VENV%\vqdata`` environment on Windows.
-- We have a linux box "aestas" and a Windows box "sommer" with WSL.
+- Support Linux and Windows development environments.
 - Directories: all three are imported with ``-e .``:
   - ``quant_data`` is a git directory.
   - ``quant_data/dysanos`` is a separate git directory.
