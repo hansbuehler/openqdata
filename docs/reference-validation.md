@@ -52,7 +52,7 @@ The old references contain no smooth SANOS baseline. For DLV and smooth SANOS, t
 
 ## Updated environment and solver finding
 
-A fresh isolated throwaway environment is retained at `/home/hans/quantdata_data/quant_data/qdata/runs/reference-20261026T222817Z-a7b6de8c/latest-env`; no shared project environment was upgraded.
+A fresh isolated throwaway environment was used for this validation; no shared project environment was upgraded. Its exact package list is retained in `latest-packages.txt` under the run directory. The temporary environment was removed after the completed checks during cleanup.
 
 | Package | Control environment | Updated environment |
 |---|---|---|
