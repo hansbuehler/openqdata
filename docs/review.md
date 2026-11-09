@@ -1,5 +1,7 @@
 # Consolidation review
 
+This records the initial consolidation. See [repository migration](migration.md) and [offline testing](testing.md) for the current split, synthetic inputs and validation.
+
 ## Scope and provenance
 
 Repository: `git@github.com:hansbuehler/quantdata.git` (formerly `openquantai/qdata`). The existing local checkout remains `~/python/qdata`; new clones use `quantdata`.
