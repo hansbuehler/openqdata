@@ -122,8 +122,8 @@ def constant_maturity_vix(
     verify_inp(np.isfinite(near_total_variance) and np.isfinite(next_total_variance)
                and min(near_total_variance, next_total_variance) >= 0,
                lambda: "Invalid term variance")
-    alpha = (target_days - near_days) / (next_days - near_days)
-    return float(100 * np.sqrt(((1 - alpha) * near_total_variance + alpha * next_total_variance) * 365 / target_days))
+    weight = (target_days - near_days) / (next_days - near_days)
+    return float(100 * np.sqrt(((1 - weight) * near_total_variance + weight * next_total_variance) * 365 / target_days))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Repository split
 
-`hansbuehler/quantdata` contains provider access, filtering, DLV/SANOS calibration and licensed-cache generation. It contains synthetic test inputs and output-cleared notebook sources. Benchmark data and benchmark extraction are in the separate private `hansbuehler/quantdata_benchmark` repository, which depends on quantdata and supplies the optional `quantdata.benchmarks` namespace.
+`hansbuehler/quantdata` contains provider access, filtering, DLV/SANOS calibration and licensed-cache generation. It contains synthetic test inputs and output-cleared notebook sources, and owns the shared `quantdata.benchmark` namespace. WIDB benchmark data and extraction are in the separate private `hansbuehler/quantdata_benchmark_widb` repository, which depends on quantdata and supplies `quantdata.benchmark.widb`. Other benchmark distributions can share the parent namespace.
 
 The existing local core checkout remains `~/python/qdata`. Imports, OQ_DATA configuration, source-cache keys and fitting dependency versions are preserved. Existing licensed observations, calibrated DLVs, SANOS densities and other production caches remain external. No licensed data were downloaded, calibrated or re-extracted during migration. All 126 existing benchmark Parquet files were checked against their recorded SHA-256 hashes; all six benchmark configuration IDs remain unchanged.
 

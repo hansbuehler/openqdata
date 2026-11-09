@@ -30,7 +30,7 @@ The [WIDB market-data pipeline](docs/market-data.md) documents the default clean
 
 See [SANOS fitting results](SANOS.md) for historical SPX bid/ask coverage, conditional fit errors, option counts and runtime comparisons.
 
-The optional [benchmark package](https://github.com/hansbuehler/quantdata_benchmark) contains benchmark extraction code and restricted datasets. Its redistribution status is unconfirmed, so it remains in a separate private repository. Installing that package additionally provides `import quantdata.benchmarks`.
+The core package provides the shared `quantdata.benchmark` namespace for optional benchmark extensions. The [WIDB benchmark package](https://github.com/hansbuehler/quantdata_benchmark_widb) supplies `import quantdata.benchmark.widb`, extraction code and restricted datasets. Its redistribution status is unconfirmed, so it remains in a separate private repository.
 
 This repository contains no licensed observations or benchmark datasets. Offline tests use independent synthetic inputs; examples require users to supply their own provider access. Existing licensed caches remain external and retain their configuration IDs and fitting versions.
 

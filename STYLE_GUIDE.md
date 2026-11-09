@@ -194,7 +194,7 @@
 ## Models, outputs, and visualization
 
 - Model outputs are part of the interface. When adding an output, wire it through its tracker, checkpoint serialization, batching/valuation path, and visualizer.
-- Keep per-instrument outputs as vectors; aggregate only where a portfolio-level panel explicitly requires it.
+- Keep per-instrument outputs as vectors; aggregate only where a research comparison explicitly requires it.
 - Use the same formula, weighting measure, cost definition, and effective sample count in the model and corresponding visualization. If a plot intentionally uses another measure, label it clearly.
 - Follow the established plot colors unless the surrounding plot defines another scheme: training commonly uses red/purple/orange and validation blue/green/light blue.
 - Include the model label and group/session in figure titles when multiple sequential measure-change stages can otherwise look identical.

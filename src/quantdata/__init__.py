@@ -7,7 +7,7 @@ from cdxcore.verbose import Context
 
 from quantdata.env import Environment, Locations, env
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # Discover optional quantdata extension packages in separate installations.
 __path__ = extend_path(__path__, __name__)

@@ -217,7 +217,7 @@ CODE_TO_FLAG: dict[ConditionCode, ConditionFlag] = {
     ConditionCode.STOCK_OPTIONS_AUCTION_AGAINST_SINGLE_LEG: ConditionFlag.STOCK_OPTION | ConditionFlag.COMPLEX | ConditionFlag.AUCTION | ConditionFlag.ELECTRONIC,
     ConditionCode.STOCK_OPTIONS_FLOOR_TRADE_AGAINST_SINGLE_LEG: ConditionFlag.STOCK_OPTION | ConditionFlag.COMPLEX | ConditionFlag.FLOOR,
 
-    # options: proprietary / compression / extended hours
+    # options: product-specific contracts / compression / extended hours
     ConditionCode.MULTI_LEG_FLOOR_PROPRIETARY_3PLUS: ConditionFlag.PROPRIETARY_PRODUCT | ConditionFlag.COMPLEX | ConditionFlag.FLOOR,
     ConditionCode.MULTILATERAL_COMPRESSION_PROPRIETARY: ConditionFlag.PROPRIETARY_PRODUCT | ConditionFlag.COMPRESSION,
     ConditionCode.EXTENDED_HOURS_TRADE: ConditionFlag.EXTENDED_HOURS,
