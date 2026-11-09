@@ -35,7 +35,7 @@ Filtering mainly improves speed: at smoothness 0.25, median fit time falls from 
 
 ![Filtered](docs/figures/sanos-flt-population-comparison.png)
 
-The [benchmark extraction pipeline](https://github.com/hansbuehler/quantdata_benchmark_widb/blob/main/src/quantdata/benchmark/widb/PUB_PIPELINE.md) documents source configurations, units and regeneration. Licensed observations, caches, models and diagnostics remain outside Git. Existing extracts and configuration/version metadata are retained in the separate private [quantdata_benchmark_widb repository](https://github.com/hansbuehler/quantdata_benchmark_widb); redistribution permission has not been confirmed.
+Licensed observations, caches, models and diagnostics remain outside Git.
 
 ## Solver attempt statuses
 

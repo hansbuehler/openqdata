@@ -51,9 +51,9 @@ This directory contains Ivy DB data processing in the following files:
 
 To access this data:
 
-  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../README.md) which means to set at
+  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../../README.md) which means to set at
   least the ``OQ_DATA_ROOT`` environment variable.
-  [See the discussion in data locations and how to set them](../../README.md#data-locations).
+  [See the configuration guide for data locations](../../../docs/configuration.md).
 
   2. Ensure you have an account and test it. The [Massive quickstart](https://massive.com/docs/rest/quickstart) contains some helpful information.
 

@@ -10,7 +10,5 @@ market-data
 commands
 testing
 massive
-review
 live-validation
-reference-validation
 ```

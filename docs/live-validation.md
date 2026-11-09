@@ -2,8 +2,6 @@
 
 Validated on 2026-10-26. The primary run used isolated Python 3.13 and a unique external data root; WRDS used one process throughout (limit four). No source or fixture directory was used as an output cache.
 
-Run directory: `/home/hans/quantdata_data/quant_data/qdata/runs/live-20261026T222158Z-4daa84d5`.
-
 | Stage | Result |
 |---|---|
 | fred_download | passed |
@@ -34,6 +32,4 @@ Live Python 3.14 WIDB raw collection, enrichment, per-expiry fitting and option 
 - Pandas 3 infers StringDtype both during construction and when reading Parquet. WIDB restores only strings explicitly declared as object columns at processing input/output boundaries. Numeric schema validation remains strict. A regression verifies this without altering the caller's input.
 - An unreachable raw-schema validation after an early return was restored to the active enrichment path.
 
-The full offline suite now has 109 passing tests and 12 skipped for missing legacy fixtures. Detailed live results are in report.json, cache-replay.json, wrds314-report.json and the persistent run logs. Initial failed attempts were retained separately; the report records the successful final run. No commit or push has been made.
-
-The subsequent all-date/model/dependency comparison is documented in reference-validation.md.
+The full offline suite now has 109 passing tests and 12 skipped for missing legacy fixtures. Detailed live results are in report.json, cache-replay.json, wrds314-report.json and the persistent run logs. Initial failed attempts were retained separately; the report records the successful final run.

@@ -110,7 +110,7 @@ class BackboneJax(Backbone):
         jax.debug.callback( callback, condition )
 
     def are_broadcastable(self, *shapes) -> bool:
-        """ Check if ``shapes`` are broadcastable according to torch/numpy broadcasting rules. """
+        """ Check if ``shapes`` are broadcastable according to numpy broadcasting rules. """
         shapes = [ x.shape if isinstance(x, self.Array) else x for x in shapes ]
         return Backbone.are_broadcastable(*shapes)
     

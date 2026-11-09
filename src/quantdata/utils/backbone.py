@@ -2,8 +2,7 @@
 Abstract Numerical Backbone
 ===========================
 
-Consistent wrapper around ``numpy`` and ``torch``, and in the future ``jax`` for being able to write
-unified model code where
+Consistent wrapper around ``numpy`` and ``jax`` for writing unified numerical code where
 sensible (e.g. outside ``jax.scan`` loops).
 
 The backbone also has a black scholes function and a ``verify`` function.
@@ -16,7 +15,7 @@ import numpy as nnp
 
 class Backbone(object):
     """
-    Generalized compute backbone: ``numpy``, ``torch``, (soon) ``jax``.
+    Generalized compute backbone: ``numpy`` or ``jax``.
     """
 
     class Array(object):
@@ -121,7 +120,7 @@ def relu(x: nnp.ndarray) -> nnp.ndarray:
     return nnp.maximum(_0, x)
 
 def are_broadcastable(*shapes) -> bool:
-    """ Check if ``shapes`` or arrays are broadcastable according to torch/numpy broadcasting rules. """    
+    """ Check if ``shapes`` or arrays are broadcastable according to numpy broadcasting rules. """    
     shapes = [ x.shape if isinstance(x, nnp.ndarray) else x for x in shapes ]
     return Backbone.are_broadcastable(*shapes)
 
@@ -178,7 +177,7 @@ class BackboneNumpy(Backbone):
         return relu(x)
     
     def are_broadcastable(self, *shapes) -> bool:
-        """ Check if ``shapes`` or arrays are broadcastable according to torch/numpy broadcasting rules. """    
+        """ Check if ``shapes`` or arrays are broadcastable according to numpy broadcasting rules. """    
         shapes = [ x.shape if isinstance(x, nnp.ndarray) else x for x in shapes ]
         return Backbone.are_broadcastable(*shapes)
     

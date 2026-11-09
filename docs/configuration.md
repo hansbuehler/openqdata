@@ -6,10 +6,10 @@ Environment variables take precedence over TOML. `OQ_DATA_CONFIG` selects a requ
 
 ```toml
 [data]
-root = "/data/quant_data/quantdata"
+root = "/data/quantdata"
 # Optional individual overrides:
-# raw = "/data/quant_data/quantdata/raw"
-# processed = "/data/quant_data/quantdata/processed"
+# raw = "/data/quantdata/raw"
+# processed = "/data/quantdata/processed"
 cache_mode = "on"
 ```
 

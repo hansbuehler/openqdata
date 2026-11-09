@@ -29,9 +29,7 @@ The sweep exposed and fixed option symbols being rejected in bar-cache paths,
 nonempty split-response date parsing, and bar timestamps not retaining their
 declared millisecond dtype. Small real responses are retained for offline tests.
 
-Live report:
-`/home/hans/quantdata_data/quant_data/qdata/runs/massive-endpoints-20261027T174919Z-fb209b47/report.json`.
-Existing run paths retain their original names as provenance.
+The live report is kept with the external run outputs, outside Git.
 
 ## Closing-trade handling
 
