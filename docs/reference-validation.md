@@ -1,6 +1,6 @@
 # Reference dataset validation
 
-Validated on 2026-10-26 using `smoothness=0.25`, confirmed in `quantdata/dysanos/market.py`, `dysanos/flex/config.py`, and `dysanos/localvolbysanos/markets.py`.
+Validated on 2026-10-26 using `smoothness=0.25`, matching the original research workflow's configuration recorded in the validation run.
 
 Run directory: `/home/hans/quantdata_data/quant_data/qdata/runs/reference-20261026T222817Z-a7b6de8c`.
 
@@ -21,9 +21,9 @@ Exact-value case counts:
 
 ## Pipeline and case sizes
 
-Each case rebuilds the initial WIDB filters and enrichment from frozen raw observations. `mk_arb_free_day` runs the per-expiry reference fit and the full linear DLV surface fit. The usual OptionsFilter then selects the model's option universe, followed by `mk_arb_free_day` with smoothness 0.25 on that universe. The option-selection thresholds are the DYSANOS defaults. Selection uses `normalize=False` to retain the WIDB enriched-table schema; pure forward-price/strike inputs and selected contract identities are unchanged by cash-unit normalization.
+Each case rebuilds the initial WIDB filters and enrichment from frozen raw observations. `mk_arb_free_day` runs the per-expiry reference fit and the full linear DLV surface fit. The usual OptionsFilter then selects the model's option universe, followed by `mk_arb_free_day` with smoothness 0.25 on that universe. The option-selection thresholds match the original research workflow's defaults. Selection uses `normalize=False` to retain the WIDB enriched-table schema; pure forward-price/strike inputs and selected contract identities are unchanged by cash-unit normalization.
 
-The smooth fit therefore follows DYSANOS's option-filter-before-smoothing ordering. It is not the unfinished `mk_arb_free_day2` implementation, and it does not import DYSANOS training code into quantdata.
+The smooth fit therefore follows the original research workflow's option-filter-before-smoothing ordering, using `mk_arb_free_day` for both fitting stages.
 
 | Case | Raw rows | Enriched rows | DLV rows | Selected rows | Smooth SANOS rows |
 |---|---:|---:|---:|---:|---:|

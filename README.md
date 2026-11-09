@@ -22,7 +22,7 @@ from quantdata.massive import MassiveClient
 from quantdata.arbfree.arbfree import MkArbFree
 ```
 
-Sources: `fred`, `yahoo`, `widb`, `vixdata`, `massive`, `tickers`; numerical surface tools: `arbfree` (formerly `sanos`). No DYSANOS/GROMM experiments are included.
+Sources: `fred`, `yahoo`, `widb`, `vixdata`, `massive`, `tickers`; numerical surface tools: `arbfree` (formerly `sanos`).
 
 See [configuration](docs/configuration.md), [commands](docs/commands.md), [testing](docs/testing.md), [Massive API coverage and trade defaults](docs/massive.md) and [consolidation review](docs/review.md). Initial consolidation used offline tests. Subsequent [live validation](docs/live-validation.md) and [reference-model comparisons](docs/reference-validation.md) document the authorized download and solver checks.
 

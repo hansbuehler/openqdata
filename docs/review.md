@@ -10,7 +10,7 @@ Copied the working `quant_data/quantdata` source for `fred`, `yahoo`, `widb`, `v
 
 Restored `massive` from `7571da77dfa799368ac41f1b9e4dbaf43f61e87e`, the parent of deletion commit `77a0017`. A temporary historical checkout at `~/python/qd_massive` was created, copied, and removed.
 
-Retained the required `biz_calendar`, `pool`, `utils`, and minimal optional JAX numerical backbone. DYSANOS, GROMM, Torch training infrastructure and experiment locations are excluded. The untracked unfinished `widb/market.py` was excluded: it contains invalid syntax and depends directly on DYSANOS geometry. Its original file remains untouched.
+Retained the required `biz_calendar`, `pool`, `utils`, and minimal optional JAX numerical backbone. The package provides data access, preprocessing and arbitrage-free surface fitting for academic research, with `raw` and `processed` storage locations.
 
 The standard source layout is `src/quantdata/`. The distribution and import namespace are both named `quantdata`. Do not install both this package and the original quantdata distribution in one environment. The package path change is limited to the requested `quantdata.sanos` → `quantdata.arbfree` rename and its internal references.
 

@@ -11,10 +11,8 @@
 
 - Use the existing ``~/vqdata`` repository on Linux and the conda ``%VENV%\vqdata`` environment on Windows.
 - Support Linux and Windows development environments.
-- Directories: all three are imported with ``-e .``:
-  - ``quant_data`` is a git directory.
-  - ``quant_data/dysanos`` is a separate git directory.
-  - ``packages/cdxcore`` contains ``cdxcore``.
+- Install this checkout with ``pip install -e '.[test]'``; package source is in ``src/quantdata``.
+- ``cdxcore`` is a dependency declared in ``pyproject.toml``.
 
 
 ## Python style
@@ -91,7 +89,7 @@
 ### Training
 
 - Drive training with a ``TrainConfig``. The training config should contain parameters which affect the way training is run but not the
-  logical model outcome. A change in a training parameter should allow a warm start from a different training configuration. The user is responsible for deciding whether a changed optimizer, scheduler, precision, gradient-accumulation, or distributed-training configuration is suitable for a warm start. Do not enforce a cold start merely because the ``TrainConfig`` changed. See ``TrainConfig`` in ``quantdata/dysanos/grid/torch_train.py`` as an example.
+  logical model outcome. A change in a training parameter should allow a warm start from a different training configuration. The user is responsible for deciding whether a changed optimizer, scheduler, precision, gradient-accumulation, or distributed-training configuration is suitable for a warm start. Do not enforce a cold start merely because the ``TrainConfig`` changed.
 - Allow compilation through a training-function configuration parameter. Compile performance-critical compatible functions, and retain an eager path for debugging and unsupported operations.
 - Allow the user to ``just load`` the model from disk without attempting to train.
 
