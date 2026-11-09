@@ -92,6 +92,35 @@ def test_classify_expiry_quad_witching() -> None:
     assert df["has_expiry"][0] == 2  # EXPIRY.QUAD_WITCHING
 
 
+def test_classify_expiry_is_independent_of_other_rows() -> None:
+    from quantdata.massive.expiries import classify_expiry
+
+    # Each date is classified on its own: weeklies are not monthly expiries, and the
+    # month's standard expiry is recognised without the rest of the month present.
+    single = {d: classify_expiry(pl.DataFrame({"date": [d]}))["has_expiry"][0]
+              for d in (date(2024, 6, 7), date(2024, 6, 21), date(2024, 6, 28), date(2022, 4, 14), date(2024, 1, 19))}
+    assert single == {date(2024, 6, 7): 0, date(2024, 6, 21): 2, date(2024, 6, 28): 0,
+                      date(2022, 4, 14): 3, date(2024, 1, 19): 3}
+    df = classify_expiry(pl.DataFrame({"date": list(single), "x": range(len(single))}))
+    assert dict(zip(df["date"].to_list(), df["has_expiry"].to_list())) == single
+    assert df.columns == ["date", "x", "has_expiry"]
+
+
+@pytest.mark.parametrize("day,expiring,expected", [
+    (date(2024, 6, 7), True, 1),    # weekly -> STANDARD
+    (date(2024, 6, 21), True, 2),   # June standard expiry -> QUAD_WITCHING
+    (date(2024, 1, 19), True, 3),   # MONTHLY
+    (date(2022, 4, 14), True, 3),   # shifted monthly before Good Friday
+    (date(2024, 6, 21), False, None),
+])
+def test_ticker_expiries_day_codes(monkeypatch, day, expiring, expected) -> None:
+    from quantdata.massive import expiries
+
+    rows = [{"expiration_date": day.isoformat(), "ticker": "O:SPY"}] if expiring else []
+    monkeypatch.setattr(expiries.MassiveClient, "paginate", lambda self, url, params: rows)
+    assert expiries.ticker_expiries_day("SPY", day) == (day, expected)
+
+
 def test_classify_expiry_shifted_when_friday_is_holiday() -> None:
     from quantdata.massive.expiries import classify_expiry
 
@@ -226,7 +255,7 @@ def test_build_1s_trade_bars() -> None:
     from quantdata.massive.tickers.data import build_1s_trade_bars
 
     sample = synthetic["trades"](date(2024, 1, 2))
-    df = build_1s_trade_bars.__wrapped__("SPY", date(2024, 1, 2), trades=sample)
+    df = build_1s_trade_bars("SPY", date(2024, 1, 2), trades=sample)
     assert df["num_trades"].sum() == sample.height
     assert df.height == 23400
     traded = df.filter(pl.col("num_trades") > 0)
@@ -237,3 +266,18 @@ def test_build_1s_trade_bars() -> None:
     assert "dt_ns" in df.columns
     assert "num_trades" in df.columns
     assert "log_cash_volume" in df.columns
+
+
+def test_supplied_trades_bypass_the_cache(monkeypatch) -> None:
+    from quantdata.massive.tickers import data
+
+    def cached(*args, **kwargs):
+        raise AssertionError("caller-supplied trades must not read or write the default cache")
+    monkeypatch.setattr(data, "_build_1s_trade_bars_cached", cached)
+    sample = synthetic["trades"](date(2024, 1, 2))
+    full = data.build_1s_trade_bars("SPY", date(2024, 1, 2), trades=sample)
+    half = data.build_1s_trade_bars("SPY", date(2024, 1, 2), trades=sample.head(sample.height // 2))
+    assert full["num_trades"].sum() == sample.height
+    assert half["num_trades"].sum() == sample.height // 2
+    with pytest.raises(AssertionError, match="default cache"):
+        data.build_1s_trade_bars("SPY", date(2024, 1, 2))

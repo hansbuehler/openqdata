@@ -21,7 +21,7 @@ from cdxcore.uniquehash import named_unique_filename48_8
 from cdxcore.verbose import Context
 
 from quantdata.arbfree.arbfree import ArbFreePricer, MkArbFree
-from quantdata.biz_calendar import DateRange
+from quantdata.biz_calendar import DAYS_PER_YEAR, DateRange, count_business_days_between
 from quantdata.pool import PoolConfig
 from quantdata.widb import WIDBClient, arbfree, day, timeseries
 from quantdata.widb.arbfree import mk_arb_free_day
@@ -60,6 +60,17 @@ def market_day(provider_inputs) -> tuple[pd.DataFrame, pd.DataFrame]:
     enriched = enrich_day("SPX", DAY, raw_data=raw, override_cache_mode="off", verbose=Context.quiet)
     assert not raw.empty and not enriched.empty
     return raw, enriched
+
+
+def test_enrichment_of_fully_valid_day_drops_working_column(market_day) -> None:
+    raw, enriched = market_day
+    keys = ["expiry_id", "strike"]
+    clean = raw[raw.set_index(keys).index.isin(enriched.set_index(keys).index)]
+    assert len(clean) < len(raw)  # the synthetic day contains deliberately invalid quotes
+    result = enrich_day("SPX", DAY, raw_data=clean, override_cache_mode="off", verbose=Context.quiet)
+    assert "is_valid" not in result.columns
+    assert list(result.columns) == list(enriched.columns)
+    assert len(result) == len(enriched)
 
 
 def test_enrichment_recovers_synthetic_forward_and_discount(market_day) -> None:
@@ -321,6 +332,9 @@ def test_time_series_packs_selected_rows_and_padding(linear_day, monkeypatch, ca
     assert valid.shape == (2, max(counts)) and valid.dtype == np.dtype(bool)
     assert counts[0] != counts[1] and max(counts) <= 1000
     assert series["dates"] == [DAY, other_day]
+    # time_y is the business-day year fraction since the first date, like tte_y
+    np.testing.assert_allclose(series["time_y"][:, 0], [0., count_business_days_between(DAY, other_day) / DAYS_PER_YEAR], rtol=1e-6)
+    assert 4. < series["time_y"][1, 0] < 5.
     for i, expected in enumerate([selected, other_selected]):
         assert valid[i].sum() == len(expected)
         assert valid[i, :len(expected)].all() and not valid[i, len(expected):].any()

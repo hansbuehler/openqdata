@@ -38,7 +38,7 @@ import requests as requests
 from cdxcore.err import verify
 from cdxcore.subdir import SubDir, version
 from cdxcore.uniquehash import label_unique_filename48_8, named_unique_filename48_8
-from cdxcore.util import fmt_date, is_filename, verify_inp
+from cdxcore.util import fmt_date, fmt_list, is_filename, verify_inp
 from massive import RESTClient
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -91,6 +91,15 @@ class MassiveClient(object):
     _HTTP_SESSION = None
 
     BASE_URL = "https://api.massive.com"  #: Base URL for requests.
+    MAX_RETRIES = 5  #: Retries of transient request failures in :meth:`get`, with increasing timeouts.
+    RETRY_STATUS = frozenset({408, 429, 500, 502, 503, 504})  #: Transient HTTP statuses which are retried.
+    RETRY_EXCEPTIONS = (
+        requests.exceptions.RetryError,
+        requests.exceptions.Timeout,
+        requests.exceptions.JSONDecodeError,
+        requests.exceptions.ChunkedEncodingError,
+        requests.exceptions.ConnectionError,
+    )  #: Transient transport errors which are retried.
     START_DATE = date(
         2022, 3, 7
     )
@@ -193,51 +202,28 @@ class MassiveClient(object):
         # Never attach credentials to a response-supplied external URL.
         if (target.scheme, target.netloc) != (origin.scheme, origin.netloc):
             raise ValueError("Massive request URL must use the configured API origin")
-        MASSIVE_token = MassiveClient.get_token()
-        if params is None:
-            params = {"apiKey": MASSIVE_token}
-        else:
-            params = {**params, "apiKey": MASSIVE_token}
+        # The key travels in the Authorization header, never in the URL, so that it cannot
+        # appear in exception messages, warnings or logs that quote the request URL.
+        headers = {"Authorization": f"Bearer {MassiveClient.get_token()}"}
         cnt = 1
         while True:
-            e_ = None
             try:
-                r = self.session.get(url, params=params, timeout=60 * cnt, allow_redirects=False)
+                r = self.session.get(url, params=params, headers=headers, timeout=60 * cnt, allow_redirects=False)
                 if 300 <= r.status_code < 400:
                     raise ValueError("Massive API redirects are not allowed")
                 r.raise_for_status()
                 return r.json()
-            except requests.exceptions.RetryError as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
-            except requests.exceptions.ReadTimeout as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
-            except requests.exceptions.ConnectTimeout as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
-            except requests.exceptions.JSONDecodeError as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
-            except requests.exceptions.ChunkedEncodingError as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
-            except requests.exceptions.ConnectionError as e:
-                if cnt > 5:
-                    raise e
-                e_ = e
             except requests.exceptions.HTTPError as e:
                 status = e.response.status_code if e.response is not None else None
-                # transient server-side error → retry
-                if status is None or not (500 <= status < 600):
-                    raise e
+                # Only transient statuses are retried; anything else (4xx, 501, 505, ...) raises immediately.
+                if status not in self.RETRY_STATUS or cnt > self.MAX_RETRIES:
+                    raise
                 e_ = e
-            warnings.warn(f"**** Massive error: {e_} ...sleeping for {cnt} seconds ***")
+            except self.RETRY_EXCEPTIONS as e:
+                if cnt > self.MAX_RETRIES:
+                    raise
+                e_ = e
+            warnings.warn(f"**** Massive error: {e_} ...retry {cnt}/{self.MAX_RETRIES} after sleeping for {cnt} seconds ***")
             pytime.sleep(cnt)
             cnt += 1
 
@@ -850,9 +836,8 @@ class MassiveClient(object):
         )
         err = out.filter(pl.col("adjfactor").is_infinite() | pl.col("adjfactor").is_nan())
         if err.height > 0:
-            print(err.head())  # print stats to stdout
             raise RuntimeError(
-                f"Unexpected data error: found infinite/NaN adjustment factor for ticker {ticker} between {fmt_date(start)} and {fmt_date(end)}. This likely indicates a data error in the underlying bars, e.g. a missing unadjusted close price. Please check the underlying bars and contact the authors if you need help."
+                f"Unexpected data error: found infinite/NaN adjustment factor for ticker {ticker} between {fmt_date(start)} and {fmt_date(end)} on {fmt_list(err['date'].head(5).to_list())}. This likely indicates a data error in the underlying bars, e.g. a missing unadjusted close price. Please check the underlying bars and contact the authors if you need help."
             )
 
         out = out.select(["date", "adjfactor"])

@@ -58,7 +58,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 from cdxcore.bs import bs
-from cdxcore.err import verify_inp
+from cdxcore.err import verify, verify_inp
 from cdxcore.pretty import PrettyObject
 from cdxcore.subdir import CacheMode, SubDir
 from cdxcore.uniquehash import named_unique_filename48_8
@@ -914,14 +914,12 @@ def enrich_day( ticker : str, d : dt.date, raw_data : pd.DataFrame|None = None, 
     # copy over
     for r, v in arrays.items():
         data[r] = v
-    # remove all rows where is_valid is False
-    if not np.all(arrays.is_valid):
-        data = data.loc[data["is_valid"]].drop(columns="is_valid")
+    # keep valid rows only; 'is_valid' is a working column and not part of SCHEMA_ENRICHED_DAY
+    data = data.loc[data["is_valid"]].drop(columns="is_valid")
 
     df_bad = data[data['pure_ask_price']<=data['pure_bid_price']]
-    if not df_bad.empty:
-        print(df_bad[['expiry_id', 'strike', 'pure_ask_price', 'pure_bid_price']])
-        assert df_bad.empty, f"Internal error: {ticker} {d}: found {len(df_bad)} options with pure ask price below pure bid price -- this should not happen here!"
+    verify(df_bad.empty, lambda: f"Internal error: {ticker} {d}: found {len(df_bad)} options with pure ask price at or below pure bid price -- this should not happen here: "
+                                 f"{df_bad[['expiry_id', 'strike', 'pure_ask_price', 'pure_bid_price']].head().to_dict('records')}")
 
     num_expires_left = data["expiry_id"].nunique()
     if len(dropped_expiries) > 0:

@@ -44,3 +44,14 @@ def test_missing_yahoo_field_with_extra_column_is_rejected(local_prices, monkeyp
     monkeypatch.setattr(yahoo.yf, "download", lambda *a, **kw: downloaded)
     with pytest.raises(AttributeError, match="missing column headers"):
         yahoo.YFClient.prices.__wrapped__(client, "TEST", date(2025, 1, 2), date(2025, 1, 4))
+
+
+def test_yahoo_end_date_is_inclusive(local_prices, monkeypatch):
+    client, _, downloaded = local_prices
+    calls = []
+    def download(ticker, *, start, end, **kwargs):
+        calls.append((start, end))
+        return downloaded.copy()
+    monkeypatch.setattr(yahoo.yf, "download", download)
+    yahoo.YFClient.prices.__wrapped__(client, "TEST", date(2025, 1, 2), date(2025, 1, 3))
+    assert calls == [(date(2025, 1, 2), date(2025, 1, 4))]  # yfinance's 'end' is exclusive

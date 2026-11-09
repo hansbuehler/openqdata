@@ -20,6 +20,11 @@ from quantdata import env
 _fred_cache = env.locations.raw("fred")
 
 
+def _redact(text: str, secret: str) -> str:
+    """Remove ``secret`` from ``text``."""
+    return text.replace(secret, "***") if secret else text
+
+
 def _fetch_fred_series(api_key: str, series_id: str, start: date, end: date) -> pl.DataFrame:
     env.require_live("FRED")
     url = "https://api.stlouisfed.org/fred/series/observations"
@@ -30,9 +35,17 @@ def _fetch_fred_series(api_key: str, series_id: str, start: date, end: date) -> 
         "observation_start": start.strftime("%Y-%m-%d"),
         "observation_end": end.strftime("%Y-%m-%d"),
     }
-    r = requests.get(url, params=params, timeout=30)
-    r.raise_for_status()
-    obs = r.json().get("observations", [])
+    # FRED only accepts the key as a URL parameter. requests quotes the full URL in its exception
+    # messages, so failures are re-raised with a redacted message and without the original chain.
+    try:
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        obs = r.json().get("observations", [])
+    except requests.exceptions.RequestException as e:
+        # The response and request objects also carry the URL, so they are not attached.
+        simple = (requests.exceptions.HTTPError, requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+        cls = type(e) if isinstance(e, simple) else requests.exceptions.RequestException
+        raise cls(f"FRED request for {series_id} failed: {_redact(str(e), api_key)}") from None
 
     if not obs:
         return pl.DataFrame(

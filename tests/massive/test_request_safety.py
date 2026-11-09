@@ -28,8 +28,9 @@ def test_external_urls_rejected_before_credentials(monkeypatch, url):
 def test_pagination_keeps_credentials_on_api_origin(monkeypatch, next_url, valid):
     client, calls = MassiveClient(), []
     monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
-    def get(url, *, params, timeout, allow_redirects):
-        assert params["apiKey"] == "test-token" and not allow_redirects
+    def get(url, *, params, headers, timeout, allow_redirects):
+        assert headers == {"Authorization": "Bearer test-token"} and not allow_redirects
+        assert "apiKey" not in (params or {}) and "test-token" not in url
         calls.append(url)
         data = {"results": [{"id": 1}], "next_url": next_url} if len(calls) == 1 else {"results": [{"id": 2}]}
         return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: data)
@@ -57,3 +58,59 @@ def test_redirect_is_not_followed(monkeypatch):
     with pytest.raises(ValueError, match="redirects"):
         client.get(client.BASE_URL + "/v3/trades/SPY")
     assert len(calls) == 1
+
+
+def _response(status):
+    response = requests.Response()
+    response.status_code = status
+    response.url = MassiveClient.BASE_URL + "/v3/trades/SPY"
+    return response
+
+
+@pytest.mark.parametrize("status", [400, 401, 404, 501, 505])
+def test_non_transient_http_errors_raise_immediately(monkeypatch, status):
+    client, calls = MassiveClient(), []
+    monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
+    monkeypatch.setattr("quantdata.massive.client.pytime.sleep", lambda s: pytest.fail("must not retry"))
+    def get(url, **kwargs):
+        calls.append(url)
+        return _response(status)
+    client._session = SimpleNamespace(get=get)
+    with pytest.raises(requests.exceptions.HTTPError) as err:
+        client.get(client.BASE_URL + "/v3/trades/SPY")
+    assert len(calls) == 1
+    assert "test-token" not in str(err.value)
+
+
+@pytest.mark.parametrize("failure", ["status", "timeout"])
+def test_transient_failures_retry_with_cap_and_growing_timeout(monkeypatch, failure):
+    client, timeouts, sleeps = MassiveClient(), [], []
+    monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
+    monkeypatch.setattr("quantdata.massive.client.pytime.sleep", sleeps.append)
+    def get(url, *, timeout, **kwargs):
+        timeouts.append(timeout)
+        if failure == "timeout":
+            raise requests.exceptions.ReadTimeout("read timed out")
+        return _response(503)
+    client._session = SimpleNamespace(get=get)
+    with pytest.warns(UserWarning, match="Massive error"):
+        with pytest.raises((requests.exceptions.HTTPError, requests.exceptions.ReadTimeout)):
+            client.get(client.BASE_URL + "/v3/trades/SPY")
+    assert len(timeouts) == MassiveClient.MAX_RETRIES + 1
+    assert timeouts == sorted(timeouts) and timeouts[-1] > timeouts[0]
+    assert sleeps == list(range(1, MassiveClient.MAX_RETRIES + 1))
+
+
+def test_transient_failure_then_success(monkeypatch):
+    client, calls = MassiveClient(), []
+    monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
+    monkeypatch.setattr("quantdata.massive.client.pytime.sleep", lambda s: None)
+    def get(url, **kwargs):
+        calls.append(url)
+        if len(calls) == 1:
+            return _response(502)
+        return SimpleNamespace(status_code=200, raise_for_status=lambda: None, json=lambda: {"ok": True})
+    client._session = SimpleNamespace(get=get)
+    with pytest.warns(UserWarning, match="retry 1/"):
+        assert client.get(client.BASE_URL + "/v3/trades/SPY") == {"ok": True}
+    assert len(calls) == 2

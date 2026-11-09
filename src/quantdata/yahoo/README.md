@@ -12,7 +12,6 @@ Yahoo Finance access is managed by yfinance. Data paths come from `quantdata.env
 Set `OQ_DATA_TEST_MODE=1` and `OQ_DATA_TEST_ROOT` to an existing fixture root to read local caches without provider access.
 
 - `__init__.py`: Yahoo finance. Public entry points: package exports.
-- `_old.py`: Implementation helpers. Public entry points: package exports.
 - `client.py`: Yahoo finance. Public entry points: `YFConnectionConfig`, `DataError`, `YFClient`.
 
 Processing modules provide `python -m quantdata.<source>.<module> --help`. New adapters accept a function name and `--params` containing JSON keyword arguments. Existing specialized commands retain their own options.
@@ -29,9 +28,8 @@ So far coverage is minimal.
 This data is freely available and does not require configuration
 beyon what is required by **quantdata**:
 
-  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../README.md) which means to set at 
+  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../../README.md) which means to set at 
   least the ``OQ_DATA_ROOT`` environment variable. 
-  [See the discussion in data locations and how to set them](../../
-  README.md#data-locations).
+  [See the configuration guide for data locations](../../../docs/configuration.md).
 
   2. Run [``notebooks/viz_history.ipynb``](notebooks/viz_history.ipynb) to validate everything works.

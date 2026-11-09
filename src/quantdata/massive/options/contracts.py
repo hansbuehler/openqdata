@@ -598,7 +598,6 @@ def main(
                 f"\rProcessing {fmt_digits(len(tickers))} tickers: {int(it * 100 // len(tickers))}% done. Now processing {ticker} from {fmt_date(start)} to {fmt_date(end)}."
             )
         )
-        date_range = DateRange(start, end)
         _ = filter_contracts_between(
             ticker,
             date_range,

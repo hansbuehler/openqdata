@@ -14,7 +14,7 @@ WRDS credentials use `WRDS_USERNAME` and the provider authentication setup. Data
 Set `OQ_DATA_TEST_MODE=1` and `OQ_DATA_TEST_ROOT` to an existing fixture root to read local caches without provider access.
 
 - `__init__.py`: WRDS Option Metric Ivy DB Data Module. Public entry points: package exports.
-- `arbfree.py`: Arbitrage-Free Market Data Filter. Public entry points: `mk_arb_free_day`, `mk_arb_free_day2`, `main`.
+- `arbfree.py`: Arbitrage-Free Market Data Filter. Public entry points: `mk_arb_free_day`, `main`.
 - `bad.py`: Bad data directory. Public entry points: `BAD`.
 - `client.py`: WIDB connection and OptionMetrics query helpers. Public entry points: `WRDSCredentials`, `WIDBClient`, `interpolate_zero_curve`.
 - `day.py`: Generating one day of WRDS Option Metrics data for one ticker. Public entry points: `RawDayFilter`, `collect_raw_day`, `ExpiryFilter`, `enrich_day`, `main`.
@@ -25,7 +25,7 @@ Processing modules provide `python -m quantdata.<source>.<module> --help`. New a
 
 ## Original module documentation
 
-# WIDB - [WRDS](WRDS.md) Ivy DB from Option Metrics
+# WIDB - WRDS Ivy DB from Option Metrics
 
 This directory contains the WIDB ingestion and preprocessing pipeline used to turn raw OptionMetrics data into daily surfaces and sampled time-series tensors.
 
@@ -40,9 +40,9 @@ The main modules are:
 
 To access this data:
 
-  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../README.md) which means to set at 
+  1. Make sure you configure the python environment for **quantdata** following [the introduction](../../../README.md) which means to set at 
   least the ``OQ_DATA_ROOT`` environment variable. 
-  [See the discussion in data locations and how to set them](../../README.md#data-locations).
+  [See the configuration guide for data locations](../../../docs/configuration.md).
 
 
   2. [Create an account](https://wrds-www.wharton.upenn.edu/pages/support/getting-started/) and [enable MFA](https://wrds-www.wharton.upenn.edu/pages/about/log-in-to-wrds-using-two-factor-authentication/).
@@ -72,14 +72,14 @@ There a number of notebooks which will show how to call the functionality contai
 To mass download raw data and generate "daily" snapshots, call:
 
 ```bash
-cd quant_data/quantdata/widb
+cd src/quantdata/widb
 python -m day SPX --workers 4
 ```
 
 To embedd this data with no-arbitrage fits (see below), call:
 
 ```bash
-cd quant_data/quantdata/widb
+cd src/quantdata/widb
 python -m arbfree SPX --workers 4 --proceed
 ```
 

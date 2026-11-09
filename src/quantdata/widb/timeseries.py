@@ -26,7 +26,7 @@ from cdxcore.verbose import Context
 from cdxcore.version import version
 from prettytable import PrettyTable
 
-from quantdata.biz_calendar import DateRange
+from quantdata.biz_calendar import DAYS_PER_YEAR, DateRange, count_business_days_between
 from quantdata.pool import PoolConfig
 from quantdata.widb.bad import BAD
 from quantdata.widb.day import (
@@ -133,7 +133,7 @@ def build_time_series_uid(ticker, date_range, include_fields, exclude_fields, ti
 
 _PER_DAY_FIELDS = {'ticker','date','spot','spot_prev','spot_ref','spot_ret','time_y'} # not all fields are present, depending on settings
 
-@_processing_timeseries(fmt=SubDir.PYTREE_HDF5).cache( "0.1", dependencies=[filter_options_day, build_time_series_uid],uid=build_time_series_uid )
+@_processing_timeseries(fmt=SubDir.PYTREE_HDF5).cache( "0.2", dependencies=[filter_options_day, build_time_series_uid],uid=build_time_series_uid )
 def build_time_series(   
                   ticker : str,
                   date_range : DateRange, *,
@@ -307,7 +307,8 @@ def build_time_series(
             r.is_valid = np.zeros((num_steps,max_num_options), dtype=np.bool_ )
 
             if 'time_y' in requested_fields:
-                r.time_y = np.array( [ ( d - dates[0] ).total_seconds() / ( 24 * 3600 ) for d in dates ], dtype=np.float32 ).reshape((num_steps,1))
+                # business-day year fraction since the first date, consistent with 'tte_y = bdte / DAYS_PER_YEAR'
+                r.time_y = ( count_business_days_between( dates[0], np.asarray(dates, dtype="datetime64[D]") ) / DAYS_PER_YEAR ).astype(np.float32).reshape((num_steps,1))
 
             src_request = sorted(requested_fields-{'is_valid','time_y'})
             for c in src_request:

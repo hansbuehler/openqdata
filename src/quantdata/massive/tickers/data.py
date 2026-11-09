@@ -108,35 +108,12 @@ def build_unadjusted_trades(
 # ---------------------------------------------------------------------------
 
 
-@_data_cache(fmt=SubDir.POLARS_PARQUET).cache(
-    "0.1",
-    uid=lambda underlying, d: f"spot_wmid/{underlying}/{fmt_date(d)}",
-    exclude_args=["trades", "client"],
-    dependencies=[
-        MassiveClient.fetch_quotes,
-        MassiveClient.fetch_day_summary,
-        build_unadjusted_trades,
-    ],
-)
-def build_unadjusted_spot_wmid(
+def _build_unadjusted_spot_wmid(
     underlying: str,
     d: date,
-    *,
-    trades: pl.DataFrame | None = None,
-    client: MassiveClient | None = None,
+    trades: pl.DataFrame | None,
+    client: MassiveClient | None,
 ) -> pl.DataFrame:
-    """
-    Weighted mid-price tape for ``underlying`` on ``d``, suitable for asof-joins.
-
-    The tape is initialised at session open and close with the unadjusted open/close
-    from ``/v1/open-close`` so a spot price is always available.  Quote wmid and
-    trade prices are interleaved; trades win on identical timestamps.
-
-    Returns
-    -------
-    pl.DataFrame
-        Columns: u_ts_ns (Datetime[ns, NY]), spot (Float32), is_trade (Boolean)
-    """
     client = MassiveClient() if client is None else client
     open_dt, close_dt, _hd = session_open_close(d)
 
@@ -205,23 +182,22 @@ def build_unadjusted_spot_wmid(
     return out
 
 
-# ---------------------------------------------------------------------------
-# 1-second trade bars
-# ---------------------------------------------------------------------------
-
 
 @_data_cache(fmt=SubDir.POLARS_PARQUET).cache(
     "0.1",
-    uid=lambda underlying, d: f"u1s_bars/{underlying}/{fmt_date(d)}",
-    exclude_args=["trades", "client"],
+    uid=lambda underlying, d: f"spot_wmid/{underlying}/{fmt_date(d)}",
+    exclude_args=["client"],
     dependencies=[
-        MassiveClient.fetch_trades,
-        session_open_close,
-        full_second_grid_ns,
+        MassiveClient.fetch_quotes,
+        MassiveClient.fetch_day_summary,
         build_unadjusted_trades,
     ],
 )
-def build_1s_trade_bars(
+def _build_unadjusted_spot_wmid_cached(underlying: str, d: date, *, client: MassiveClient | None = None) -> pl.DataFrame:
+    return _build_unadjusted_spot_wmid(underlying, d, None, client)
+
+
+def build_unadjusted_spot_wmid(
     underlying: str,
     d: date,
     *,
@@ -229,24 +205,35 @@ def build_1s_trade_bars(
     client: MassiveClient | None = None,
 ) -> pl.DataFrame:
     """
-    Per-second OHLCV trade bars for ``underlying`` on ``d``.
+    Weighted mid-price tape for ``underlying`` on ``d``, suitable for asof-joins.
 
-    By default, trades come from ``build_unadjusted_trades()``: this restricts
-    timestamps to the session but retains closing prints and official/corrected
-    closes. To exclude these conditions, pass
-    ``trades=filter_valid_trades(underlying, d)`` explicitly.
-
-    Bin semantics:
-
-    * all bins except last: ``[t, t+1s)``
-    * last bin: ``[close_dt-1s, close_dt]`` (inclusive close)
+    The tape is initialised at session open and close with the unadjusted open/close
+    from ``/v1/open-close`` so a spot price is always available.  Quote wmid and
+    trade prices are interleaved; trades win on identical timestamps.
 
     Returns
     -------
     pl.DataFrame
-        Columns: dt_ns, second_bin_ix, bin_type, open, close, high, low, last_trade,
-        num_trades, vwap, log_cash_volume, log_volume, date, underlying, is_half_day
+        Columns: u_ts_ns (Datetime[ns, NY]), spot (Float32), is_trade (Boolean)
     """
+    # Only the default trade stream is cached; caller-supplied trades bypass the cache so that
+    # differently filtered inputs never share a cache entry.
+    if trades is not None:
+        return _build_unadjusted_spot_wmid(underlying, d, trades, client)
+    return _build_unadjusted_spot_wmid_cached(underlying, d, client=client)
+
+
+# ---------------------------------------------------------------------------
+# 1-second trade bars
+# ---------------------------------------------------------------------------
+
+
+def _build_1s_trade_bars(
+    underlying: str,
+    d: date,
+    trades: pl.DataFrame | None,
+    client: MassiveClient | None,
+) -> pl.DataFrame:
     client = MassiveClient() if client is None else client
     open_dt, close_dt, is_half_day = session_open_close(d)
 
@@ -329,3 +316,52 @@ if __name__ == "__main__":
     from quantdata.cli import run_module
 
     run_module(globals())
+
+@_data_cache(fmt=SubDir.POLARS_PARQUET).cache(
+    "0.1",
+    uid=lambda underlying, d: f"u1s_bars/{underlying}/{fmt_date(d)}",
+    exclude_args=["client"],
+    dependencies=[
+        MassiveClient.fetch_trades,
+        session_open_close,
+        full_second_grid_ns,
+        build_unadjusted_trades,
+    ],
+)
+def _build_1s_trade_bars_cached(underlying: str, d: date, *, client: MassiveClient | None = None) -> pl.DataFrame:
+    return _build_1s_trade_bars(underlying, d, None, client)
+
+
+def build_1s_trade_bars(
+    underlying: str,
+    d: date,
+    *,
+    trades: pl.DataFrame | None = None,
+    client: MassiveClient | None = None,
+) -> pl.DataFrame:
+    """
+    Per-second OHLCV trade bars for ``underlying`` on ``d``.
+
+    By default, trades come from ``build_unadjusted_trades()``: this restricts
+    timestamps to the session but retains closing prints and official/corrected
+    closes. To exclude these conditions, pass
+    ``trades=filter_valid_trades(underlying, d)`` explicitly.
+
+    Bin semantics:
+
+    * all bins except last: ``[t, t+1s)``
+    * last bin: ``[close_dt-1s, close_dt]`` (inclusive close)
+
+    Returns
+    -------
+    pl.DataFrame
+        Columns: dt_ns, second_bin_ix, bin_type, open, close, high, low, last_trade,
+        num_trades, vwap, log_cash_volume, log_volume, date, underlying, is_half_day
+    """
+    # Only the default trade stream is cached; caller-supplied trades bypass the cache so that
+    # differently filtered inputs never share a cache entry.
+    if trades is not None:
+        return _build_1s_trade_bars(underlying, d, trades, client)
+    return _build_1s_trade_bars_cached(underlying, d, client=client)
+
+

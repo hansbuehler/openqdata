@@ -13,7 +13,6 @@ cheap.
 
 from __future__ import annotations
 
-import warnings
 from datetime import date
 
 import polars as pl
@@ -23,6 +22,7 @@ from cdxcore.util import fmt_date
 from cdxcore.verbose import Context
 from cdxcore.version import version
 
+from quantdata.biz_calendar import prev_business_day
 from quantdata.massive import MassiveClient
 from quantdata.tickers import SubDir, _locations_tickers
 from quantdata.tickers.ticker_calendar import EXPIRY
@@ -45,51 +45,54 @@ def _third_friday_expr() -> pl.Expr:
     return first_friday + pl.duration(days=14)
 
 
-@version("0.1", dependencies=[_third_friday_expr])
+@version("0.2", dependencies=[_third_friday_expr, prev_business_day])
 def classify_expiry(df: pl.DataFrame) -> pl.DataFrame:
     """
     Add ``has_expiry`` (Int8, values from :class:`quantdata.tickers.ticker_calendar.EXPIRY`)
-    to a DataFrame that already contains a ``date`` column of trading days.
+    to a DataFrame that contains a ``date`` column.
 
-    The classification is purely calendar-based:
+    The classification is purely calendar-based and does not depend on which other dates are
+    present in ``df``. The standard monthly expiry is the third Friday of the month or, if that
+    is not an NYSE business day, the last business day before it.
 
-    * :attr:`EXPIRY.QUAD_WITCHING`: shifted third Friday of Mar/Jun/Sep/Dec
-    * :attr:`EXPIRY.MONTHLY`: shifted third Friday of other months
-    * :attr:`EXPIRY.NORMAL`: any other trading day
+    * :attr:`EXPIRY.QUAD_WITCHING`: standard monthly expiry in Mar/Jun/Sep/Dec
+    * :attr:`EXPIRY.MONTHLY`: standard monthly expiry in other months
+    * :attr:`EXPIRY.NONE`: any other date
     """
     verify("date" in df.columns, "df must contain a 'date' column")
 
     df0 = df.with_columns(pl.col("date").cast(pl.Date))
-    df1 = df0.with_columns(
-        pl.col("date").dt.year().alias("_y"),
-        pl.col("date").dt.month().alias("_m"),
-        _third_friday_expr().alias("_third_friday"),
+    months = (
+        df0.select(_third_friday_expr().alias("_third_friday"))
+        .unique()
+        .drop_nulls()
+    )
+    monthly = pl.DataFrame(
+        {
+            "_third_friday": months["_third_friday"],
+            "_monthly_expiry_date": pl.Series(
+                [prev_business_day(d, count_start=True) for d in months["_third_friday"].to_list()],
+                dtype=pl.Date,
+            ),
+        },
+        schema={"_third_friday": pl.Date, "_monthly_expiry_date": pl.Date},
     )
 
-    expiry_by_month = df1.group_by(["_y", "_m"]).agg(
-        pl.col("_third_friday").first().alias("_third_friday"),
-        pl.col("date")
-        .filter(pl.col("date") <= pl.col("_third_friday").first())
-        .max()
-        .alias("_monthly_expiry_date"),
+    df1 = df0.with_columns(_third_friday_expr().alias("_third_friday")).join(
+        monthly, on="_third_friday", how="left"
     )
-
-    df2 = df1.join(expiry_by_month, on=["_y", "_m"], how="left")
-
     is_monthly = pl.col("date") == pl.col("_monthly_expiry_date")
-    is_qtr = pl.col("_m").is_in([3, 6, 9, 12])
+    is_qtr = pl.col("date").dt.month().is_in([3, 6, 9, 12])
 
-    out = df2.with_columns(
+    return df1.with_columns(
         pl.when(is_monthly & is_qtr)
         .then(pl.lit(int(EXPIRY.QUAD_WITCHING)))
         .when(is_monthly)
         .then(pl.lit(int(EXPIRY.MONTHLY)))
         .otherwise(pl.lit(int(EXPIRY.NONE)))
-        .alias("has_expiry")
         .cast(pl.Int8)
-    ).drop(["_y", "_m", "_third_friday", "_monthly_expiry_date"])
-
-    return out
+        .alias("has_expiry")
+    ).drop(["_third_friday", "_monthly_expiry_date"])
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +100,7 @@ def classify_expiry(df: pl.DataFrame) -> pl.DataFrame:
 # ---------------------------------------------------------------------------
 
 
-@version("0.1", dependencies=[classify_expiry, MassiveClient])
+@version("0.2", dependencies=[classify_expiry, MassiveClient])
 def ticker_expiries_day(ticker: str, dt: date) -> tuple[date, int | None]:
     """
     Check via the Massive API whether any option on ``ticker`` expires on ``dt``.
@@ -123,27 +126,16 @@ def ticker_expiries_day(ticker: str, dt: date) -> tuple[date, int | None]:
     if not res:
         return dt, None
 
-    df = None
-    try:
-        df = pl.DataFrame(res, strict=False).select(
-            pl.col("expiration_date").str.strptime(pl.Date, "%Y-%m-%d").alias("date")
-        )
-        df = (
-            df.group_by("date")
-            .agg(pl.len().alias("num_expiring"))
-            .with_columns(pl.col("num_expiring") > 0)
-            .rename({"num_expiring": "has_expiry"})
-        )
-        df = classify_expiry(df)
-    except TypeError as e:
-        warnings.warn(str(e))
-        raise
-
-    if df.is_empty():
+    expiring = {
+        r.get("expiration_date") for r in res if isinstance(r, dict)
+    }
+    if dt.strftime("%Y-%m-%d") not in expiring:
         return dt, None
 
-    assert df.height == 1, f"Expected 1 row but got {df.height}"
-    return dt, int(df["has_expiry"].to_list()[0])
+    # Options expire on ``dt``: mechanical monthly/quarterly expiries keep their code,
+    # every other expiry (weeklies, 0DTE, ...) is STANDARD.
+    code = int(classify_expiry(pl.DataFrame({"date": [dt]}, schema={"date": pl.Date}))["has_expiry"][0])
+    return dt, code if code != int(EXPIRY.NONE) else int(EXPIRY.STANDARD)
 
 
 # ---------------------------------------------------------------------------

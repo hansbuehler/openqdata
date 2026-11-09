@@ -4,8 +4,11 @@ from __future__ import annotations
 from datetime import date
 
 import polars as pl
+import pytest
+from click.testing import CliRunner
 
 from quantdata.massive import MassiveClient
+from quantdata.massive.options import contracts
 from quantdata.massive.options.contracts import (
     REJECTED,
     ContractsFilter,
@@ -49,3 +52,16 @@ def test_filter_contracts_value_ranges(monkeypatch, synthetic_massive) -> None:
     assert active['ticker'].to_list() == ['used']
     assert active['approx_cash_vol_prev_k'].to_list() == [1.]
     assert active['nms'].to_list() == [0.]
+
+
+@pytest.mark.parametrize("flag,exclude_half_days", [([], True), (["--halfdays"], False)])
+def test_contracts_cli_honours_halfdays_and_passes_dates(monkeypatch, flag, exclude_half_days):
+    seen = []
+    monkeypatch.setattr(contracts, "filter_contracts_between", lambda ticker, date_range, **kw: seen.append((ticker, date_range)))
+    result = CliRunner().invoke(contracts.main, ["SPY", "QQQ", "--period", "2024-12-20", "2024-12-31", "--workers", "0", *flag])
+    assert result.exit_code == 0, result.output
+    assert [t for t, _ in seen] == ["SPY", "QQQ"]
+    for _, date_range in seen:
+        assert date_range.exclude_half_days is exclude_half_days
+        assert (date_range.start, date_range.end) == (date(2024, 12, 20), date(2024, 12, 31))
+        assert type(date_range.start) is date and "00:00" not in str(date_range)

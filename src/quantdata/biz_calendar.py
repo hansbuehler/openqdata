@@ -75,7 +75,7 @@ class NormalizedStrikes:
         eps_vol : float | :class:`numpy.ndarray`| None, default ``None``
             Volatility scale for epsilon. If None, :attr:`SCALE` is used.
         backbone : :class:`Backbone`, default :class:`BackboneNumpy`
-            Alternative backbone, e.g. torch or jax.
+            Alternative array namespace, e.g. ``jax.numpy``.
 
         Returns
         -------
@@ -108,7 +108,7 @@ class NormalizedStrikes:
         eps_vol : float | :class:`numpy.ndarray`| None, default ``None``
             Volatility scale for epsilon. If None, :attr:`SCALE` is used.
         backbone : :class:`Backbone`, default :class:`BackboneNumpy`
-            Alternative backbone, e.g. torch or jax.
+            Alternative array namespace, e.g. ``jax.numpy``.
 
         Returns
         -------
@@ -259,102 +259,83 @@ def count_business_days_between(
 
         return int(count)
 
-    # Vectorised case: for each pair of start[i], end[i], count trading days in (start[i], end[i]]
+    # Vectorised case, matching the scalar convention:
+    # count trading days in (start, end] if start <= end, and minus those in [end, start) otherwise.
     td_array = np.asarray(trading_days, dtype="datetime64[D]")
-    lo = np.searchsorted(td_array, start, side="right")
-    hi = np.searchsorted(td_array, end, side="right")
-    return (hi - lo).astype(np.int32)
+    forward = np.searchsorted(td_array, end, side="right") - np.searchsorted(td_array, start, side="right")
+    backward = np.searchsorted(td_array, end, side="left") - np.searchsorted(td_array, start, side="left")
+    return np.where(start <= end, forward, backward).astype(np.int32)
 
 
-@version("0.1", dependencies=[get_business_days])
+@version("0.2", dependencies=[get_business_days])
 def add_business_days(
     start: dt.date, num_days: int, exclude_half_days: bool = False, *, count_start: bool = False
 ) -> dt.date:
     """
     Add a number of business days to a date.
 
-    Note that if ``start`` is a business day then use ``count_start`` to include it in counting:
-    if ``start`` is a business day, and if ``count_start`` is ``True``, then
-    if ``num_days=1`` or ``num_days=-1`` then the function will the return ``start``.
+    Counting starts from the first business day after (or, if ``num_days < 0``, before) ``start``.
+    If ``start`` is a business day and ``count_start`` is ``True``, then ``start`` itself is counted
+    as the first day in either direction, i.e. ``num_days=1`` and ``num_days=-1`` both return ``start``.
+
+    If ``start`` is not a business day, the first business day after (before) ``start`` is
+    counted as the first day; ``count_start`` has no effect. For example, if ``start`` is a Saturday
+    then ``num_days=1`` returns the following Monday and ``num_days=-1`` the preceding Friday,
+    assuming both are business days.
+
+    ``num_days=0`` returns ``start`` if it is a business day, and otherwise the next business day.
 
     Parameters
     ----------
-    start : ``datetime.date``
-        Start date. This function raises a :class:`ValueError` if ``start`` is not a business day, or if
-        it is a half business day and ``exclude_half_days`` is ``False``.
-    num_days : int
+    start : ``datetime.date`` | :class:`numpy.ndarray` of dates
+        Start date(s). Does not need to be a business day.
+    num_days : int | :class:`numpy.ndarray` of ints
         Number of business days to add. Can be negative to subtract business days.
     exclude_half_days : bool, default ``False``
         If ``True``, remove early-close trading sessions from the calendar before counting.
     count_start : bool, default ``False``
-        Whether to count ``start`` if it is a business day. In that case ``start`` is counted in either
-        direction as the first day.
-        If ``False``, then the counts starts from the first business day after start.
-
+        Whether to count ``start`` as the first day if it is a business day.
         This flag has no effect if ``start`` is not a business day.
 
     Returns
     -------
-    ``datetime.date``
-        Resulting date after adding the specified number of business days.
+    ``datetime.date`` | :class:`numpy.ndarray` of dates
+        Resulting date(s) after adding the specified number of business days.
+        Array inputs return ``datetime64[D]`` arrays with element-wise identical results to the scalar version.
     """
-    if isinstance(start, np.ndarray):
-        start = np.asarray(start, dtype="datetime64[D]")
-        if isinstance(num_days, np.ndarray):
-            verify_inp( start.shape == num_days.shape,
-                        f"start and num_days must have the same shape, but got {start.shape} and {num_days.shape}" )
-            return np.asarray( [
-                    add_business_days(s, n, exclude_half_days=exclude_half_days)
-                    for s, n in zip(start, num_days, strict=True)
-                ], dtype="datetime64[D]" )
-        return np.asarray(
-            [add_business_days(s, num_days, exclude_half_days=exclude_half_days) for s in start],
-            dtype="datetime64[D]")
-
-    if isinstance(num_days, np.ndarray):
-        return np.asarray(
-            [add_business_days(start, n, exclude_half_days=exclude_half_days) for n in num_days],
-            dtype="datetime64[D]" )
+    kwargs = dict(exclude_half_days=exclude_half_days, count_start=count_start)
+    if isinstance(start, np.ndarray) or isinstance(num_days, np.ndarray):
+        starts, nums = np.broadcast_arrays(np.asarray(start, dtype="datetime64[D]"), np.asarray(num_days))
+        verify_inp(np.issubdtype(nums.dtype, np.integer),
+                   lambda: f"num_days must be integer, found dtype {nums.dtype}")
+        out = [add_business_days(s.astype(dt.date), int(n), **kwargs) for s, n in zip(starts.ravel(), nums.ravel(), strict=True)]
+        return np.asarray(out, dtype="datetime64[D]").reshape(starts.shape)
 
     # scalar version
     start = to_date(start)
     num_days = int(num_days)
+    forward = num_days >= 0
+    steps = abs(num_days)
 
-    if num_days >= 0:
-        schedule = get_business_days(
-            start,
-            start + dt.timedelta(days=(num_days // 5) * 7 + 7),
-            exclude_half_days=exclude_half_days,
-        )
-        assert len(schedule) > 0, "Internal error - this should never happen"
-        assert schedule[0] >= start, (
-            f"Schedule should start on or after {start}, but starts at {schedule[0]}"
-        )
-        if start == schedule[0] and count_start:
-            # start is a business day
-            num_days = max(0, num_days - 1)  # count start, so we need to subtract 1 from num_days
-        return schedule[num_days]
-
-    else:
-        schedule = get_business_days(
-            start + dt.timedelta(days=-(abs(num_days) // 5 * 7 + 7)),
-            start,
-            exclude_half_days=exclude_half_days,
-        )
-        assert len(schedule) > 0, "Internal error - this should never happen"
-        assert schedule[-1] <= start, (
-            f"Schedule should end on or before {start}, but ends at {schedule[-1]}"
-        )
-        schedule = list(schedule)
-        schedule.reverse()  # reverse to count backwards
-        num_days = -num_days
-        if start == schedule[0] and count_start:
-            # start is a business day
-            num_days = max(0, num_days - 1)  # count start, so we need to subtract 1 from num_days
-        return schedule[num_days]
+    # Calendar window large enough for ``steps`` business days; widened on long market closures.
+    window = steps * 7 // 5 + 10
+    while True:
+        if forward:
+            schedule = get_business_days(start, start + dt.timedelta(days=window), exclude_half_days=exclude_half_days)
+        else:
+            schedule = list(reversed(get_business_days(start - dt.timedelta(days=window), start, exclude_half_days=exclude_half_days)))
+        # schedule[0] is ``start`` if it is a business day, otherwise the first business day beyond it.
+        start_is_business_day = len(schedule) > 0 and schedule[0] == start
+        if start_is_business_day and not count_start:
+            index = steps
+        else:
+            index = max(steps - 1, 0)
+        if index < len(schedule):
+            return schedule[index]
+        window *= 2
 
 
-@version("0.1", dependencies=[add_business_days])
+@version("0.2", dependencies=[add_business_days])
 def prev_business_day(
     date: dt.date, exclude_half_days: bool = False, *, count_start: bool = False
 ) -> dt.date:
@@ -372,7 +353,7 @@ def prev_business_day(
         That means even if ``date`` is a business day, the function will return the previous business day before it.
         If ``True``, then if ``date`` is a business day, the function will return that date.
 
-        This flag has no effect if ``date`` is a business day.
+        This flag has no effect if ``date`` is not a business day.
 
     Returns
     -------
@@ -382,7 +363,7 @@ def prev_business_day(
     return add_business_days(date, -1, exclude_half_days=exclude_half_days, count_start=count_start)
 
 
-@version("0.1", dependencies=[add_business_days])
+@version("0.2", dependencies=[add_business_days])
 def next_business_day(
     date: dt.date, exclude_half_days: bool = False, *, count_start: bool = False
 ) -> dt.date:
@@ -399,7 +380,7 @@ def next_business_day(
         Whether to count ``date`` if it is a business day. If ``False``, then the counts starts from the first business day after date.
         That means even if ``date`` is a business day, the function will return the next business day after it.
         If ``True``, then if ``date`` is a business day, the function will return that date.
-        This flag has no effect if ``date`` is a business day.
+        This flag has no effect if ``date`` is not a business day.
 
     Returns
     -------

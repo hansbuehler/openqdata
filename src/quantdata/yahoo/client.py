@@ -4,7 +4,7 @@ Yahoo finance
 
 from quantdata import env, SubDir, Context, version#NOQA
 from quantdata.biz_calendar import to_date
-from datetime import date
+from datetime import date, timedelta
 import yfinance as yf
 import polars as pl
 from cdxcore.util import fmt_date, fmt_list
@@ -113,7 +113,7 @@ class YFClient(object):
     """ Fields returned by :func:`prices` and expected to be present in the data frame returned by yahoo. """
 
     @_cache(fmt=SubDir.PANDAS_PARQUET).cache(
-        "0.1",
+        "0.2",
         uid=lambda ticker, start, end: f"bins/{ticker}/{fmt_date(start)}_{fmt_date(end)}",
         exclude_args=['self']) # 'self' is excluded fromm the arguments as it does not affect the output.
     def prices( self, ticker: str, start: date, end: date, *,
@@ -172,7 +172,8 @@ class YFClient(object):
         time_sleep = yfconnection_config.timeout
         while True:
             try:
-                df = yf.download( ticker, start=start, end=end, auto_adjust=True, progress=False, actions=True  )
+                # yfinance treats 'end' as exclusive, whereas 'end' is inclusive here.
+                df = yf.download( ticker, start=start, end=end + timedelta(days=1), auto_adjust=True, progress=False, actions=True  )
                 break
             except yf.exceptions.YFRateLimitError as e:
                 raise TimeoutError(f"{ticker} yfinance timeout error: {e}. Retry later")
