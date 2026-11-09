@@ -1,10 +1,11 @@
-"""Exercise real cleaning, selection, fitting and packing from stored observations.
+"""Exercise real cleaning, selection, fitting and packing from synthetic observations.
 
 Only provider retrieval is replaced. No processing function or optimizer is mocked.
 """
 from __future__ import annotations
 
 import os
+import runpy
 import subprocess
 import sys
 from dataclasses import replace
@@ -28,7 +29,7 @@ from quantdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enri
 from quantdata.widb.options_filter import OptionsFilter, filter_options_day
 from quantdata.widb.timeseries import TimeSeriesDefinition, build_time_series
 
-FIXTURES = Path(__file__).resolve().parents[1] / "stored_data"
+synthetic_day = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_data/synthetic_widb.py"))["provider_day"]
 DAY = date(2005, 11, 21)
 
 
@@ -42,23 +43,15 @@ def test_options_filter_ids_follow_current_configuration():
 
 @pytest.fixture
 def provider_inputs(monkeypatch, request: pytest.FixtureRequest) -> dict:
-    """Read required local vendor files, bypassing only versioned vendor-cache lookup."""
-    root = FIXTURES / "raw/widb"
+    """Replace provider retrieval with independently constructed analytic markets."""
     day = getattr(request, "param", DAY)
-    quotes = pd.read_parquet(root / "options/108105" / f"{day}.pdq")
-    forwards = pd.read_parquet(root / "forwards/108105" / f"{day}.pdq")
-    curve = pd.read_parquet(root / "zero_curve" / f"{day}.pdq")
-
-    def spot(self, secid, day, **kwargs):
-        directory = SubDir(str(root / "spot_price/108105"), fmt=SubDir.PICKLE, create_directory=False)
-        return directory.read(str(day), version="*", delete_wrong_version=False, raise_on_error=True)
-
-    monkeypatch.setattr(WIDBClient, "lookup_secid", lambda self, ticker: 108105)
-    monkeypatch.setattr(WIDBClient, "options", lambda self, secid, d, **kw: quotes.copy(deep=True) if d == day else pd.read_parquet(root / "options/108105" / f"{d}.pdq"))
-    monkeypatch.setattr(WIDBClient, "forwards", lambda self, secid, d, **kw: forwards.copy(deep=True) if d == day else pd.read_parquet(root / "forwards/108105" / f"{d}.pdq"))
-    monkeypatch.setattr(WIDBClient, "zero_curve", lambda self, d, **kw: curve.copy(deep=True) if d == day else pd.read_parquet(root / "zero_curve" / f"{d}.pdq"))
-    monkeypatch.setattr(WIDBClient, "spot_price", spot)
-    return {"quotes": quotes, "forwards": forwards, "curve": curve}
+    inputs = synthetic_day(day)
+    monkeypatch.setattr(WIDBClient, "lookup_secid", lambda self, ticker: 1)
+    monkeypatch.setattr(WIDBClient, "options", lambda self, secid, d, **kw: synthetic_day(d)["quotes"])
+    monkeypatch.setattr(WIDBClient, "forwards", lambda self, secid, d, **kw: synthetic_day(d)["forwards"])
+    monkeypatch.setattr(WIDBClient, "zero_curve", lambda self, d, **kw: synthetic_day(d)["curve"])
+    monkeypatch.setattr(WIDBClient, "spot_price", lambda self, secid, d, **kw: 200.)
+    return inputs
 
 
 @pytest.fixture
@@ -67,6 +60,15 @@ def market_day(provider_inputs) -> tuple[pd.DataFrame, pd.DataFrame]:
     enriched = enrich_day("SPX", DAY, raw_data=raw, override_cache_mode="off", verbose=Context.quiet)
     assert not raw.empty and not enriched.empty
     return raw, enriched
+
+
+def test_enrichment_recovers_synthetic_forward_and_discount(market_day) -> None:
+    raw, enriched = market_day
+    calendar_days = (raw.expiry - pd.Timestamp(DAY)).dt.days.to_numpy()
+    np.testing.assert_allclose(raw.df, np.exp(-.02 * calendar_days / 365), rtol=1e-6)
+    np.testing.assert_allclose(enriched.fwd, 200. * np.exp(.01 * enriched.tte_y), rtol=1e-6)
+    assert len(enriched) < len(raw)  # above-IV-ceiling quotes are rejected
+    assert not enriched.call_symbol.str.contains("SYNTHETIC-[0-9]+-0-C").any()
 
 
 def test_expiry_filter_removal_preserves_existing_cache_ids() -> None:
@@ -212,7 +214,7 @@ def test_empty_eligible_population_retains_the_public_schema(market_day) -> None
 
 
 @pytest.mark.parametrize("provider_inputs", [date(2025, 1, 3)], indirect=True)
-def test_real_1000_cap_preserves_expiries_anchors_and_original_quotes(provider_inputs) -> None:
+def test_synthetic_1000_cap_preserves_expiries_anchors_and_original_quotes(provider_inputs) -> None:
     raw = collect_raw_day("SPX", date(2025, 1, 3), RawDayFilter(), override_cache_mode="off", verbose=Context.quiet)
     frame = enrich_day("SPX", date(2025, 1, 3), raw_data=raw, override_cache_mode="off", verbose=Context.quiet)
     config = OptionsFilter(normalize=False)
@@ -300,7 +302,7 @@ def test_time_series_packs_selected_rows_and_padding(linear_day, monkeypatch, ca
     other_linear = mk_arb_free_day("SPX", other_day, mk_arb_free=definition.mk_arb_free, override_cache_mode="off", verbose=Context.quiet)
     other_selected = filter_options_day("SPX", other_day, source_data=other_linear, options_filter=definition.options_filter, verbose=Context.quiet)
     dates = DateRange(DAY, other_day, exclude_half_days=False)
-    # Restrict the calendar to two real stored observations; all market
+    # Restrict the calendar to two synthetic observations; all market
     # processing, solvers, selection and packing still execute normally.
     monkeypatch.setattr(dates, "get_business_days", lambda: [DAY, other_day])
     backends = []
@@ -346,7 +348,7 @@ def test_time_series_default_writes_and_reuses_daily_cache_without_provider(tmp_
         import pytest
 
         def blocked(*args, **kwargs):
-            raise AssertionError("Provider/network access after initial stored-data collection")
+            raise AssertionError("Provider/network access after initial synthetic-data collection")
 
         socket.socket.connect = blocked
         socket.create_connection = blocked

@@ -4,5 +4,6 @@ recursive-include docs *.md *.py
 recursive-include src README.md
 recursive-exclude src *.ipynb
 include LICENSE
+include NOTICE
 graft tests
 recursive-exclude tests __pycache__ *.pyc

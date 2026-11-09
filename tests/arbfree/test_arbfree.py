@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+import runpy
 from dataclasses import fields
 from pathlib import Path
 
-import h5py
 import numpy as np
 import pytest
 from cdxcore.verbose import Context
 
 from quantdata.arbfree.arbfree import MkArbFree
 
-DATA_FILE = Path(__file__).resolve().parents[1] / "stored_data" / "processed" / "grid_sanos_four_samples.h5"
+surface_sample = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_data/synthetic_widb.py"))["surface_sample"]
 
 
 def test_mk_arbfree_to_linear_preserves_all_other_settings() -> None:
@@ -38,30 +38,6 @@ def test_mk_arbfree_to_linear_preserves_all_other_settings() -> None:
     for field in fields(MkArbFree):
         if field.name != "smoothness":
             assert getattr(linear, field.name) == getattr(original, field.name)
-
-
-def _load_training_data() -> dict[str, np.ndarray]:
-    with h5py.File(DATA_FILE, "r") as h5_file:
-        root = h5_file["root"]
-        return {key: root[key][()] for key in root.keys()}
-
-
-def _build_market(data: dict[str, np.ndarray], isample: int) -> tuple[np.ndarray, list[np.ndarray], list[np.ndarray], list[np.ndarray]]:
-    mask = data["is_valid"][isample].astype(bool)
-    expiries = []
-    strikes = []
-    bids = []
-    asks = []
-
-    for expiry in np.unique(data["tte"][isample][mask]):
-        group_mask = (data["tte"][isample] == expiry) & mask
-        order = np.argsort(data["strikes"][isample][group_mask])
-        expiries.append(float(expiry))
-        strikes.append(data["strikes"][isample][group_mask][order].astype(np.float64))
-        bids.append(data["bid"][isample][group_mask][order].astype(np.float64))
-        asks.append(data["ask"][isample][group_mask][order].astype(np.float64))
-
-    return np.array(expiries, dtype=np.float64), strikes, bids, asks
 
 
 def _assert_surface_result_invariants(
@@ -119,16 +95,9 @@ def _assert_surface_result_invariants(
             assert np.array_equal(mstrikes_t[xix_to_mix_t], xstrikes_t)
 
 
-@pytest.mark.parametrize(
-    ("isample", "expect_drop"),
-    [
-        (0, False),
-        (1, True),
-    ],
-)
-def test_mk_arbfree_surface_on_training_samples(isample: int, expect_drop: bool) -> None:
-    data = _load_training_data()
-    expiries, strikes, bids, asks = _build_market(data, isample)
+@pytest.mark.parametrize("expect_drop", [False, True])
+def test_mk_arbfree_surface_on_synthetic_samples(expect_drop: bool) -> None:
+    expiries, strikes, bids, asks = surface_sample(expect_drop)
 
     result = MkArbFree("surface")(expiries, strikes, bids, asks, verbose=Context.quiet)
 

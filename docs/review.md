@@ -2,7 +2,7 @@
 
 ## Scope and provenance
 
-Repository: `git@github.com:openquantai/quantdata.git` (formerly `openquantai/qdata`). The existing local checkout remains `~/python/qdata`; new clones use `quantdata`.
+Repository: `git@github.com:hansbuehler/quantdata.git` (formerly `openquantai/qdata`). The existing local checkout remains `~/python/qdata`; new clones use `quantdata`.
 
 Copied the working `quant_data/quantdata` source for `fred`, `yahoo`, `widb`, `vixdata`, `tickers`, and `sanos` (renamed `arbfree`). The source checkout was based on `992ad9d01b42a83ef45f55df190c953bcad8e55c`. Local edits in `widb/arbfree.py` were included. The original source working tree was not edited.
 
@@ -12,7 +12,7 @@ Retained the required `biz_calendar`, `pool`, `utils`, and minimal optional JAX 
 
 The standard source layout is `src/quantdata/`. The distribution and import namespace are both named `quantdata`. Do not install both this package and the original quantdata distribution in one environment. The package path change is limited to the requested `quantdata.sanos` → `quantdata.arbfree` rename and its internal references.
 
-Inherited notebook examples and legacy `arbfree/old` code are retained as reference material. Notebook execution is not verified. Runtime wheel assets exclude notebooks. Source license is preserved as Apache-2.0.
+Inherited notebook examples and legacy `arbfree/old` code are retained as reference material. Notebook execution is not verified. Runtime wheel assets exclude notebooks. The current source uses PolyForm Noncommercial 1.0.0 and the attribution in NOTICE; earlier Apache-2.0 distributions retain their original terms.
 
 ## Review findings addressed
 

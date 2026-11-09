@@ -1,0 +1,7 @@
+# Test provider payloads are constructed in memory; do not retain downloaded caches.
+/raw/*
+!/raw/.gitkeep
+/processed/*
+!/processed/.gitkeep
+!/processed/fred/
+!/processed/yahoo/

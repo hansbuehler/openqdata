@@ -1,4 +1,4 @@
-"""Offline market-processing contracts over retained historical observations."""
+"""Offline market-processing contracts over independent synthetic observations."""
 from datetime import date
 
 import numpy as np
@@ -14,6 +14,8 @@ from quantdata.massive.processing import (
     filter_valid_trades,
 )
 from quantdata.massive.testing.scope import DATES, TICKERS
+
+pytestmark = pytest.mark.usefixtures("synthetic_massive")
 
 
 @pytest.mark.parametrize("within_session", [False, True])

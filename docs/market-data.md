@@ -1,6 +1,6 @@
 # WIDB market-data pipeline and default filters
 
-WRDS/OptionMetrics observations and the resulting fitted caches are **licensed source datasets**. The extracted **public benchmark datasets** are documented in the [benchmark pipeline](../src/quantdata/benchmark_data/widb/PUB_PIPELINE.md); licensed observations, caches and models remain outside Git.
+WRDS/OptionMetrics observations and the resulting fitted caches are **licensed source datasets**. The extracted **public benchmark datasets** are documented in the [benchmark pipeline](https://github.com/hansbuehler/quantdata_benchmark/blob/main/src/quantdata/benchmarks/widb/PUB_PIPELINE.md); licensed observations, caches and models remain outside Git.
 
 The pipeline has three distinct kinds of selection: **market-data cleaning before any linear fit**, **the linear fit's own expiry/strike handling**, and **the optional eligible-option selection, capped at 1,000 rows**. The first two also apply to the SANOS “Everything” surface. Only the last produces the paper-style selected population.
 

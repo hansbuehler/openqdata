@@ -12,11 +12,15 @@ Mirrors the checks done manually in:
 
 from __future__ import annotations
 
+import runpy
 from datetime import date, timedelta
 from pathlib import Path
 
 import polars as pl
 import pytest
+
+pytestmark = pytest.mark.usefixtures("synthetic_massive")
+synthetic = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_data/synthetic_massive.py"))
 
 # ---------------------------------------------------------------------------
 # Session calendar helpers (no API key needed)
@@ -119,13 +123,7 @@ def test_adjustment_factors_aapl(monkeypatch) -> None:
     from quantdata.massive import MassiveClient
 
     client = MassiveClient()
-    def stored_bars(ticker, start, end, adjusted, timespan):
-        folder = "adj" if adjusted else "raw"
-        path = Path(__file__).parent.parent / f"stored_data/raw/massive/bars/day/{folder}/AAPL/2020-01-01_2021-01-01_day.prq"
-        return pl.read_parquet(path)
-
-    monkeypatch.setattr(client, "fetch_bars", stored_bars)
-    df = MassiveClient.adjustment_factors.__wrapped__(client, "AAPL", date(2020, 1, 1), date(2021, 1, 1))
+    df = client.adjustment_factors("AAPL", date(2020, 1, 1), date(2021, 1, 1))
 
     assert isinstance(df, pl.DataFrame)
     assert df.height > 0
@@ -152,8 +150,8 @@ def test_adjustment_factors_aapl(monkeypatch) -> None:
 def test_ticker_filtered_history(ticker, start, end, expected_symbols) -> None:
     from quantdata.massive.tickers.filtered_history import ticker_filtered_history
 
-    # This API downloads directly, so exercise its stored processed result.
-    df = ticker_filtered_history(ticker, start, end)
+    # Execute history processing over invented bars, including cache bypass.
+    df = ticker_filtered_history(ticker, start, end, num_workers=0, override_cache_mode="off")
     assert df.height > 0
     assert set(df.columns) == {
         "date", "ticker", "cash_vol", "n_trades", "return_open_prev_close", "return_close_open",
@@ -212,7 +210,7 @@ def test_build_unadjusted_trades(monkeypatch) -> None:
     from quantdata.massive import MassiveClient
     from quantdata.massive.tickers.data import build_unadjusted_trades
 
-    sample = pl.read_parquet(Path(__file__).resolve().parents[1] / "stored_data/processed/tickers/SPY-2024-01-02-trades-sample.parquet")
+    sample = synthetic["trades"](date(2024, 1, 2))
     monkeypatch.setattr(MassiveClient, "fetch_trades", lambda self, ticker, d: sample)
     df = build_unadjusted_trades.__wrapped__("SPY", date(2024, 1, 2))
     assert df.height == 1000
@@ -227,7 +225,7 @@ def test_build_unadjusted_trades(monkeypatch) -> None:
 def test_build_1s_trade_bars() -> None:
     from quantdata.massive.tickers.data import build_1s_trade_bars
 
-    sample = pl.read_parquet(Path(__file__).resolve().parents[1] / "stored_data/processed/tickers/SPY-2024-01-02-trades-sample.parquet")
+    sample = synthetic["trades"](date(2024, 1, 2))
     df = build_1s_trade_bars.__wrapped__("SPY", date(2024, 1, 2), trades=sample)
     assert df["num_trades"].sum() == sample.height
     assert df.height == 23400

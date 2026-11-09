@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "quantdata"
 version = "0.1.0"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE", "NOTICE"]
 authors = [{name = "Hans Buehler"}]
 description = "Systematic access to cached quantitative market data"
 requires-python = ">=3.12,<3.15"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/openquantai/quantdata"
+Repository = "https://github.com/hansbuehler/quantdata"
 
 [project.optional-dependencies]
 jax = ["jax"]
