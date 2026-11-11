@@ -4,7 +4,7 @@ Completed 5,151 SPX dates from 2005-01-03 to 2025-08-29; both populations at smo
 
 Everything fits all reasonable paired observations after raw and expiry validation. The filtered dataset first performs full-book linear cleaning, applies the paper eligibility criteria and 1,000-row cap, then fits a separate SANOS surface. All saved models passed an independent post-repair audit of density bounds, mass, forward mean, calendar and calibration-LP constraints at 1e-5. Recovery checks 1e-7 first.
 
-Two ticker-level historical day exclusions, 2006-11-17 and 2015-08-21, use previously reconstructed, retained observations. These date-scope overrides are recorded in the public provenance; licensed input paths remain outside Git.
+Two ticker-level historical day exclusions, 2006-11-17 and 2015-08-21, use separately reconstructed observations. These date-scope overrides are recorded in the public provenance; licensed input paths remain outside Git.
 
 **The table and graphs below measure the fit to the constructed ("fixed") reference call quotes.** They do not measure whether the fitted call and its parity-derived put both lie inside their original markets. The [quote construction](src/oqdata/widb/day.py) converts put quotes to calls using the implied forward and discount factor, takes the midpoint between the higher bid and lower ask, then assigns the smaller of the original call and put spreads. This interval can differ from the actual overlap of the two markets, including when they do not overlap at all. The [original-market comparison](#reference-quotes-versus-original-markets) below excludes those inverted pairs from evaluation only; all saved calibrations remain unchanged.
 
@@ -41,13 +41,15 @@ Licensed observations, caches, models and diagnostics remain outside Git.
 
 ## Saved daily ArbFreePricer parameters
 
-The completed historical run stores the full `ArbFreePricer.to_dict()` state for every day and each of the six fits in licensed storage on this host:
+The completed historical run stores the full `ArbFreePricer.to_dict()` state for every day and each of the six fits in licensed storage outside Git. Below, `<run-root>` denotes that run directory:
 
 ```text
-/home/hans/quantdata_data/quant_data/qdata/runs/spx-private-public-20261101T135819Z-819d9b59/days/<YYYY-MM-DD>/models/<label>/model.h5
+<run-root>/days/<YYYY-MM-DD>/models/<label>/model.h5
 ```
 
 `label` is one of `all-0`, `all-0.1`, `all-0.25`, `flt-0`, `flt-0.1`, or `flt-0.25`. Each day's `report.json`, alongside its `models` directory, also records the exact path under `fits[label]["model_path"]`. The separate `cache_path` points to fitted observation rows, not the serialized pricer.
+
+The [licensed-data field appendix](#appendix-licensed-fitted-data-fields) describes those observation rows and the saved model parameters, including their units and quote conventions.
 
 Reload a saved pricer without recalibrating:
 
@@ -57,7 +59,7 @@ from pathlib import Path
 from cdxcore.subdir import SubDir
 from oqdata.arbfree.arbfree import ArbFreePricer
 
-root = Path("/home/hans/quantdata_data/quant_data/qdata/runs/spx-private-public-20261101T135819Z-819d9b59")
+root = Path("<run-root>")
 path = root / "days/2025-08-29/models/all-0.25/model.h5"
 saved = SubDir(str(path.parent), fmt=SubDir.PYTREE_HDF5).read(path.stem)
 model = ArbFreePricer.from_dict(saved)
@@ -65,11 +67,45 @@ model = ArbFreePricer.from_dict(saved)
 
 `model.mstrikes` and `model.mdensities` retain the surface grids and calibrated probability masses; `model.xstrikes` and `model.xdensities` retain the preliminary per-expiry fits. Maturities, smoothing settings, quote arrays and fitted prices are also retained. DLV arrays are not stored separately; they can be derived from the saved surface grids, masses and maturities. `model.variances` stores the reference ATM total variances, giving reference ATM volatilities as `sqrt(model.variances / model.expiries)`. Actual fitted ATM implied volatilities come from `model.price(model.expiries[:, None], strikes=1.0, mode="surface", and_vols=True)`, whose second return value contains those volatilities. The [market-data manual](docs/market-data.md) describes the general storage workflow.
 
-## Date coverage and the older 891-date panel
+## Date coverage
 
-From 2022-01-03 through 2025-08-29, all six benchmark extracts and the saved daily pricers contain **910 dates**. An older derived affine-200 model panel contains only **891**: it inherited 19 historical failures while loading smoothness-0.25 market surfaces, comprising 15 reported 300-second timeout/iteration-limit cases and four Clarabel solver errors. Later calibration-tensor preparation reused the 891 retained dates. All 19 dates have since completed successfully in the current archive for all six fits. See the [per-date reasons and provenance](docs/retained-model-day-gaps.md); these gaps belong to the older derived panel, and the current extracts retain all 910 dates.
+From 2022-01-03 through 2025-08-29, the six benchmark extracts and their saved daily pricers contain **910 dates**.
 
 **2025-01-08 is excluded from both date populations by `BAD.DAYS_ALL`.** The loader returns an empty frame before provider access when `raise_if_bad_day=False`, so its SANOS fit was never attempted. The only recorded justification is the tentative comment `expiries with zero business days?`; this is not a demonstrated solver failure. **2025-01-09 was a market closure**, a separate calendar exclusion, and quotes for that irregular expiry are also filtered out by default. The whole-day January 8 exclusion needs reassessment against its quotes under the current expiry cleaning before changing the published date scope.
+
+### Half-day completion in the licensed archive
+
+The historical figures and benchmark exports use 5,151 dates with early closes excluded. An in-place completion job adds the **44 omitted NYSE early-close dates** from 2005-01-03 through 2025-08-29 to both licensed populations at smoothness 0, 0.1 and 0.25: **264 fits**, with the same configuration IDs, cache paths and daily model locations. Existing fitted dates are retained. The target is 5,195 dates per licensed population, including 917 dates from 2022 onward; these are completion targets, not claims that pending fits have finished. The existing benchmark exports and historical plots are unchanged by this job. January 8 remains a separate whole-day exclusion.
+
+The authoritative progress file is:
+
+```text
+<run-root>/extensions/half-days-20261111T112306Z/status.json
+```
+
+Its `completed_fits`, `completed_dates`, `failed` and `status` fields distinguish completed fits from pending work. The adjacent README describes the explicit detached environment and resumption. Downloads use at most four WRDS processes; fitting uses up to eight CPU workers and the established audited solver adapter, with 600-second attempts and 3,000-second recovery. The half-spread denominator floor remains `1e-4` in normalized price units. Saved parameters and fitted rows are written into the existing parent archive; this is an extension of those datasets, not another dataset identity.
+
+Read the licensed Everything fit through its standard cache function, setting the processed root before the first oqdata import:
+
+```python
+import os
+from datetime import date
+
+root = "<run-root>"
+os.environ["OQ_DATA_PROCESSED"] = f"{root}/data/processed"
+os.environ["OQ_DATA_TEST_MODE"] = "0"
+
+from oqdata.arbfree.arbfree import MkArbFree
+from oqdata.widb.arbfree import mk_arb_free_day
+
+rows = mk_arb_free_day(
+    "SPX", date(2025, 8, 29),
+    mk_arb_free=MkArbFree(smoothness=0.1),
+    override_cache_mode="cacheonly",
+)
+```
+
+`cacheonly` reads compatible stored rows and raises on a missing or incompatible entry; it never starts a download or recalibration. Restart the interpreter before changing the data root if oqdata is already imported.
 
 ## Reference quotes versus original markets
 
@@ -134,3 +170,99 @@ Validation reproduced all 61,812 historical daily reference-coverage counts acro
 </table>
 
 Failures counts dates without a completed, audited final fit. Reported intermediate issues count native LP attempts, including retries and preprocessing; they are not counts of failed daily models. Dates below 90% refers to the historical reference-quote metric on each model's input population, before excluding inverted pairs. A numerical-error attempt is one for which Clarabel stopped because of numerical difficulty. Of the 959 such attempts, 604 returned an iterate that passed the linear-constraint and bound checks and was accepted; the other 355 attempts were not accepted, and their daily fits subsequently passed through another recovery path. An accepted feasible iterate does not imply optimality. Preliminary hard bid/ask helper infeasibility is a normal branch into the soft fit and is excluded from this table. All six final datasets have complete, independently certified daily fits; no unresolved daily fits remain.
+
+
+## Appendix: licensed fitted-data fields
+
+This appendix describes the licensed daily fitted rows and `model.h5` states above. It is not the schema of the separately distributed benchmark extracts. A daily observation row pairs a call and a put at the same strike, expiry, settlement and exercise style; it does not represent two independent calibration targets. The six labels distinguish the Everything (`all`) and selected (`flt`) calibration populations at smoothness 0, 0.1 and 0.25. The source configuration and saved model, rather than the filename alone, determine the fitting settings.
+
+The raw, enriched and fitted schemas are cumulative. The declarations in [day.py](src/oqdata/widb/day.py) (`SCHEMA_RAW_DAY`, `SCHEMA_ENRICHED_DAY`) and [arbfree.py](src/oqdata/widb/arbfree.py) (`SCHEMA_ARB_FREE_DAY_EXPIRY`, `SCHEMA_ARB_FREE_DAY_SURFACE`) define the column names and dtypes. Unless noted otherwise, numerical row fields are `float32`; identifiers are `int32`, flags are Boolean, dates are stored as `datetime64[ms]`, and ticker/symbol fields are strings represented by pandas object columns.
+
+### Identity, dates and market references
+
+| Field | Meaning and units |
+| --- | --- |
+| `ticker`, `date` | Underlying ticker and observation date. |
+| `call_symbol`, `put_symbol` | Original call and put contract symbols. |
+| `call_opt_id`, `put_opt_id` | Provider contract identifiers. |
+| `expiry`, `expiry_id` | Expiration date and an integer key distinguishing its AM/PM settlement. The key is `year*100000 + month*1000 + day*10 + (0 if is_am else 1)`. |
+| `is_am`, `is_american` | AM settlement and American exercise flags, respectively. |
+| `spot`, `spot_prev` | Current and previous underlying reference close, in underlying price units. These are the values used by the day loader. |
+| `strike` | Contract strike, in underlying price units. |
+| `bdte` | NYSE business days to expiry, reduced by 0.8 for AM settlement and floored at zero; fractional values are intentional. |
+| `tte_y` | Business-year maturity, `bdte / 252`; not calendar days divided by 365. There is no separate stored calendar-DTE column in these daily schemas. |
+| `fwd_ref` | Provider reference forward, in underlying price units; distinct from the estimated forward actually used to fit. |
+| `fwd` | Implied forward estimated across eligible put/call pairs in the expiry, in underlying price units. |
+| `df` | Discount factor to expiry, interpolated from the provider zero curve; dimensionless. |
+| `nms` | Fixed-scale normalized log-moneyness, `NMS5.to_nms(strike/fwd, tte_y)`, using scale `log(1.1)` and five-business-day regularization. |
+| `nms_atm` | The same NMS5 transformation using the expiry's interpolated ATM quote volatility in its maturity-dependent term. This is the eligibility-window field; the count cap ranks by `abs(nms)`. |
+
+### Original quotes and liquidity
+
+| Field | Meaning and units |
+| --- | --- |
+| `mkt_call_bid`, `mkt_call_ask` | Original retained call bid and ask, in option price units. |
+| `mkt_put_bid`, `mkt_put_ask` | Original retained put bid and ask, in option price units. |
+| `mkt_call_log_volume`, `mkt_put_log_volume` | `log10(1 + volume)` for the respective option; not natural logarithms. |
+| `mkt_call_log_open_interest`, `mkt_put_log_open_interest` | `log10(1 + open_interest)` for the respective option. |
+| `log_volume` | `log10(1 + call_volume + put_volume)`, combining the paired options. |
+| `log_open_interest` | `log10(1 + call_open_interest + put_open_interest)`, combining the paired options. |
+
+These original quotes remain licensed observations. Keeping them alongside the fit does not mean they are all active in the fitting objective. In particular, the selected dataset omits unselected rows, and the internal fitter can mask strikes. The default input cleaning is documented separately in the [market-data pipeline](docs/market-data.md#1-default-cleaning-before-the-linear-fit).
+
+### Constructed reference calls and normalized fitting coordinates
+
+Let `F = fwd`, `D = df`, and `k = strike/F`. A normalized call price is `c = C/(D*F)`. The `pure_*` fields always use these forward-normalized, undiscounted coordinates.
+
+| Field | Meaning and units |
+| --- | --- |
+| `pure_strike` | `k = strike/fwd`; dimensionless. |
+| `pure_bid_price`, `pure_ask_price` | Constructed reference call bid and ask, divided by `df*fwd`, after implied-volatility repricing. These are the calibration quotes, not the two original call/put markets. |
+| `call_bid`, `call_ask` | The same repriced reference call prices in option price units: `df*fwd*pure_*_price`. They are not original call quotes. |
+| `bid_vol`, `ask_vol` | Black–Scholes implied volatilities of the reference call quotes, annualized on `tte_y` and expressed as decimals, e.g. `0.2` for 20%. |
+| `pure_bid_delta`, `pure_ask_delta` | Black–Scholes call deltas in the normalized forward coordinates, at the corresponding quote implied volatility. |
+| `pure_bid_gamma`, `pure_ask_gamma` | Corresponding normalized Black–Scholes gammas. |
+| `pure_bid_vega`, `pure_ask_vega` | Corresponding normalized Black–Scholes vegas, per unit volatility, not per percentage point. |
+| `pure_bid_theta`, `pure_ask_theta` | Corresponding normalized Black–Scholes derivative with respect to remaining year fraction, holding volatility fixed. The library uses positive time-to-maturity theta, not negative calendar-time decay. |
+| `pure_bid_dk`, `pure_ask_dk` | Corresponding Black–Scholes derivatives with respect to normalized strike `k`. |
+
+The reference-call midpoint lies halfway between the higher call-equivalent bid and lower call-equivalent ask; its spread is the smaller original call/put spread. It need not be the actual intersection of the two quote intervals. See [reference quotes versus original markets](#reference-quotes-versus-original-markets) for the separate original-market evaluation and treatment of inverted pairs.
+
+### Fitted row fields
+
+| Field | Meaning and units |
+| --- | --- |
+| `mask_arb_free` | Whether this retained row's strike survived the per-expiry fitting mask. A false value is not an absent or padded row, nor a guarantee about final bid/ask coverage. |
+| `fit1_vol` | Implied volatility of the preliminary per-expiry fitted call. |
+| `pure_fit1_price` | Preliminary per-expiry fitted normalized call price, aligned to the retained input rows. |
+| `pure_fit1_delta`, `pure_fit1_gamma`, `pure_fit1_vega`, `pure_fit1_theta`, `pure_fit1_dk` | Black–Scholes Greeks evaluated at `fit1_vol`, with the same conventions as the quote Greeks above. |
+| `fitX_vol` | Implied volatility of the final surface fitted call; present for surface-mode output. |
+| `pure_fitX_price` | Final SANOS surface fitted normalized call price; present for surface-mode output. |
+| `pure_fitX_delta`, `pure_fitX_gamma`, `pure_fitX_vega`, `pure_fitX_theta`, `pure_fitX_dk` | Black–Scholes Greeks evaluated at `fitX_vol`, with the same conventions as above. These are not derivatives of the entire calibrated SANOS surface. |
+
+The native-coordinate fitted call price is `df*fwd*pure_fitX_price`; the fitted put price follows parity as `df*fwd*(pure_fitX_price - 1 + pure_strike)`. These daily schemas do not themselves add native-coordinate `fit_*` Greek columns. The benchmark exporter has its own schema and conversion rules.
+
+Generic `filter_options_day` output can additionally apply `OptionsFilter(normalize=True)`. That removes `spot`, adds the original close as `spot_ref` and the return `spot_ret = spot/spot_prev - 1`, and divides `spot_prev`, `strike`, `fwd`, `call_bid`, `call_ask` and all four `mkt_*` quote columns by the current spot. `fwd_ref` remains in its original units. All `pure_*` fields remain unchanged. The historical licensed fit adapters select with `normalize=False`, retaining native price units; do not confuse spot-normalized time-series output with these fitted caches. See [the output-normalization setting](docs/market-data.md#3-separate-eligible-option-filter-and-1000-row-cap).
+
+Packed time series add `is_valid` to distinguish real rows from padded slots. It is a packing mask, separate from `mask_arb_free`. Per-day fit statistics such as coverage, excess and runtime live in reports rather than being replicated as option-row columns.
+
+### Saved model parameters
+
+`model.h5` contains `ArbFreePricer.to_dict()`. Reload it through `ArbFreePricer.from_dict` as shown above; optional fields are encoded for HDF5 and should not be interpreted by reading sentinel strings directly. The model uses normalized strikes and prices; join its maturities to the daily rows to recover the corresponding expiry dates, forwards and discount factors.
+
+| Model field | Meaning |
+| --- | --- |
+| `smoothness`, `expiry_linear` | Surface smoothing parameter and whether the preliminary expiry fits use the linear representation. |
+| `min_half_spread` | Normalized half-spread floor for fit weighting and excess statistics; `1e-4` for these runs. |
+| `expiries` | Increasing array of fitted maturities in business-year fractions. |
+| `variances` | Reference ATM total variances used by the representation. `sqrt(variances/expiries)` gives reference ATM volatilities; they need not equal the final fitted ATM implied volatilities. |
+| `input_index` | Indices mapping retained model maturities back to the input expiry groups. |
+| `strikes`, `bids`, `asks` | Per-expiry input normalized strike and reference-quote arrays. |
+| `masks` | Per-expiry active-strike masks relative to those input arrays. |
+| `fits1`, `fitsX` | Preliminary per-expiry and final surface normalized fitted prices on the input strikes. `fitsX` is optional outside surface mode. |
+| `xstrikes`, `xdensities` | Preliminary per-expiry support grids and calibrated probability weights. |
+| `mstrikes`, `mdensities` | Final surface support grids and calibrated probability weights, interpreted together with `smoothness` and `variances`. These weights are not pointwise density ordinates. |
+| `xix_to_mix` | Maps each preliminary support grid into its final surface grid; an expiry can use `None` when the grids coincide. |
+| `run_time_expiry`, `run_time_surface` | Recorded fitting times in seconds; exclude data preparation and independent auditing. |
+
+DLV values are derived from the saved representation rather than stored in a separate daily DLV column. Fitted ATM implied volatilities can be obtained from the saved pricer at normalized strike `1.0`; see [saved daily parameters](#saved-daily-arbfreepricer-parameters).
