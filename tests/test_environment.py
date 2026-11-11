@@ -25,8 +25,8 @@ def test_locations_only_have_two_data_categories():
 
 def test_defaults_do_not_create_storage(clean_settings):
     environment = Environment()
-    assert Path(environment.locations.raw.path) == clean_settings / ".local/share/qdata/raw"
-    assert Path(environment.locations.processed.path) == clean_settings / ".local/share/qdata/processed"
+    assert Path(environment.locations.raw.path) == clean_settings / ".local/share/openqdata/raw"
+    assert Path(environment.locations.processed.path) == clean_settings / ".local/share/openqdata/processed"
     assert not (clean_settings / ".local").exists()
 
 
