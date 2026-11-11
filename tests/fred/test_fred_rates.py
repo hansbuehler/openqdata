@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import polars as pl
 import pytest
 
-import oqdata.fred.rates as rates
+import openqdata.fred.rates as rates
 
 
 @pytest.mark.parametrize("observations", [[], [

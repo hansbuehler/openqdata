@@ -6,7 +6,7 @@ Everything fits all reasonable paired observations after raw and expiry validati
 
 Two ticker-level historical day exclusions, 2006-11-17 and 2015-08-21, use separately reconstructed observations. These date-scope overrides are recorded in the public provenance; licensed input paths remain outside Git.
 
-**The table and graphs below measure the fit to the constructed ("fixed") reference call quotes.** They do not measure whether the fitted call and its parity-derived put both lie inside their original markets. The [quote construction](src/oqdata/widb/day.py) converts put quotes to calls using the implied forward and discount factor, takes the midpoint between the higher bid and lower ask, then assigns the smaller of the original call and put spreads. This interval can differ from the actual overlap of the two markets, including when they do not overlap at all. The [original-market comparison](#reference-quotes-versus-original-markets) below excludes those inverted pairs from evaluation only; all saved calibrations remain unchanged.
+**The table and graphs below measure the fit to the constructed ("fixed") reference call quotes.** They do not measure whether the fitted call and its parity-derived put both lie inside their original markets. The [quote construction](src/openqdata/widb/day.py) converts put quotes to calls using the implied forward and discount factor, takes the midpoint between the higher bid and lower ask, then assigns the smaller of the original call and put spreads. This interval can differ from the actual overlap of the two markets, including when they do not overlap at all. The [original-market comparison](#reference-quotes-versus-original-markets) below excludes those inverted pairs from evaluation only; all saved calibrations remain unchanged.
 
 | Population | Smoothness | Dates | Mean daily within bid/ask | Mean daily conditional excess | Median daily conditional median | Median runtime (s) |
 |---|---:|---:|---:|---:|---:|---:|
@@ -57,7 +57,7 @@ Reload a saved pricer without recalibrating:
 from pathlib import Path
 
 from cdxcore.subdir import SubDir
-from oqdata.arbfree.arbfree import ArbFreePricer
+from openqdata.arbfree.arbfree import ArbFreePricer
 
 root = Path("<run-root>")
 path = root / "days/2025-08-29/models/all-0.25/model.h5"
@@ -85,7 +85,7 @@ The authoritative progress file is:
 
 Its `completed_fits`, `completed_dates`, `failed` and `status` fields distinguish completed fits from pending work. The adjacent README describes the explicit detached environment and resumption. Downloads use at most four WRDS processes; fitting uses up to eight CPU workers and the established audited solver adapter, with 600-second attempts and 3,000-second recovery. The half-spread denominator floor remains `1e-4` in normalized price units. Saved parameters and fitted rows are written into the existing parent archive; this is an extension of those datasets, not another dataset identity.
 
-Read the licensed Everything fit through its standard cache function, setting the processed root before the first oqdata import:
+Read the licensed Everything fit through its standard cache function, setting the processed root before the first openqdata import:
 
 ```python
 import os
@@ -95,8 +95,8 @@ root = "<run-root>"
 os.environ["OQ_DATA_PROCESSED"] = f"{root}/data/processed"
 os.environ["OQ_DATA_TEST_MODE"] = "0"
 
-from oqdata.arbfree.arbfree import MkArbFree
-from oqdata.widb.arbfree import mk_arb_free_day
+from openqdata.arbfree.arbfree import MkArbFree
+from openqdata.widb.arbfree import mk_arb_free_day
 
 rows = mk_arb_free_day(
     "SPX", date(2025, 8, 29),
@@ -105,7 +105,7 @@ rows = mk_arb_free_day(
 )
 ```
 
-`cacheonly` reads compatible stored rows and raises on a missing or incompatible entry; it never starts a download or recalibration. Restart the interpreter before changing the data root if oqdata is already imported.
+`cacheonly` reads compatible stored rows and raises on a missing or incompatible entry; it never starts a download or recalibration. Restart the interpreter before changing the data root if openqdata is already imported.
 
 ## Reference quotes versus original markets
 
@@ -176,7 +176,7 @@ Failures counts dates without a completed, audited final fit. Reported intermedi
 
 This appendix describes the licensed daily fitted rows and `model.h5` states above. It is not the schema of the separately distributed benchmark extracts. A daily observation row pairs a call and a put at the same strike, expiry, settlement and exercise style; it does not represent two independent calibration targets. The six labels distinguish the Everything (`all`) and selected (`flt`) calibration populations at smoothness 0, 0.1 and 0.25. The source configuration and saved model, rather than the filename alone, determine the fitting settings.
 
-The raw, enriched and fitted schemas are cumulative. The declarations in [day.py](src/oqdata/widb/day.py) (`SCHEMA_RAW_DAY`, `SCHEMA_ENRICHED_DAY`) and [arbfree.py](src/oqdata/widb/arbfree.py) (`SCHEMA_ARB_FREE_DAY_EXPIRY`, `SCHEMA_ARB_FREE_DAY_SURFACE`) define the column names and dtypes. Unless noted otherwise, numerical row fields are `float32`; identifiers are `int32`, flags are Boolean, dates are stored as `datetime64[ms]`, and ticker/symbol fields are strings represented by pandas object columns.
+The raw, enriched and fitted schemas are cumulative. The declarations in [day.py](src/openqdata/widb/day.py) (`SCHEMA_RAW_DAY`, `SCHEMA_ENRICHED_DAY`) and [arbfree.py](src/openqdata/widb/arbfree.py) (`SCHEMA_ARB_FREE_DAY_EXPIRY`, `SCHEMA_ARB_FREE_DAY_SURFACE`) define the column names and dtypes. Unless noted otherwise, numerical row fields are `float32`; identifiers are `int32`, flags are Boolean, dates are stored as `datetime64[ms]`, and ticker/symbol fields are strings represented by pandas object columns.
 
 ### Identity, dates and market references
 

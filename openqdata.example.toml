@@ -1,0 +1,3 @@
+[data]
+root = "~/.local/share/openqdata"
+cache_mode = "on"

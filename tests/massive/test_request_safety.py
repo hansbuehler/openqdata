@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 import requests
 
-from oqdata.massive import MassiveClient
+from openqdata.massive import MassiveClient
 
 
 @pytest.mark.parametrize("url", [
@@ -71,7 +71,7 @@ def _response(status):
 def test_non_transient_http_errors_raise_immediately(monkeypatch, status):
     client, calls = MassiveClient(), []
     monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
-    monkeypatch.setattr("oqdata.massive.client.pytime.sleep", lambda s: pytest.fail("must not retry"))
+    monkeypatch.setattr("openqdata.massive.client.pytime.sleep", lambda s: pytest.fail("must not retry"))
     def get(url, **kwargs):
         calls.append(url)
         return _response(status)
@@ -86,7 +86,7 @@ def test_non_transient_http_errors_raise_immediately(monkeypatch, status):
 def test_transient_failures_retry_with_cap_and_growing_timeout(monkeypatch, failure):
     client, timeouts, sleeps = MassiveClient(), [], []
     monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
-    monkeypatch.setattr("oqdata.massive.client.pytime.sleep", sleeps.append)
+    monkeypatch.setattr("openqdata.massive.client.pytime.sleep", sleeps.append)
     def get(url, *, timeout, **kwargs):
         timeouts.append(timeout)
         if failure == "timeout":
@@ -104,7 +104,7 @@ def test_transient_failures_retry_with_cap_and_growing_timeout(monkeypatch, fail
 def test_transient_failure_then_success(monkeypatch):
     client, calls = MassiveClient(), []
     monkeypatch.setattr(MassiveClient, "get_token", lambda: "test-token")
-    monkeypatch.setattr("oqdata.massive.client.pytime.sleep", lambda s: None)
+    monkeypatch.setattr("openqdata.massive.client.pytime.sleep", lambda s: None)
     def get(url, **kwargs):
         calls.append(url)
         if len(calls) == 1:

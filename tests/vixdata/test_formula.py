@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from oqdata.vixdata.formula import (
+from openqdata.vixdata.formula import (
     constant_maturity_vix,
     discrete_total_variance,
     select_vix_strip,

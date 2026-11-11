@@ -441,12 +441,12 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# oqdata generated output
+# openqdata generated output
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
 build/
 dist/
-oqdata.toml
+openqdata.toml
 qdata.toml
 quantdata.toml

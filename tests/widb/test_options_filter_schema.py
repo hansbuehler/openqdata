@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from oqdata.widb import options_filter
+from openqdata.widb import options_filter
 
 
 def test_option_filter_restores_legacy_object_string_schema(monkeypatch) -> None:

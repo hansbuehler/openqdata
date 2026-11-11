@@ -38,7 +38,7 @@ jobs:
           from pathlib import Path
 
           version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
-          module = ast.parse(Path('src/oqdata/__init__.py').read_text())
+          module = ast.parse(Path('src/openqdata/__init__.py').read_text())
           declared = next(
               ast.literal_eval(node.value) for node in module.body
               if isinstance(node, ast.Assign)
@@ -46,11 +46,11 @@ jobs:
                       for target in node.targets)
           )
           if declared != version:
-              raise SystemExit('pyproject.toml and oqdata.__version__ must agree')
+              raise SystemExit('pyproject.toml and openqdata.__version__ must agree')
           if os.environ['GITHUB_REF_TYPE'] == 'tag':
               if os.environ['GITHUB_REF_NAME'] != f'v{version}':
                   raise SystemExit(f'Release tag must be v{version}')
-          print(f'Validated oqdata {version}')
+          print(f'Validated openqdata {version}')
           PY
       - name: Install packaging tools
         run: python -m pip install build twine
@@ -60,21 +60,21 @@ jobs:
         run: python -m twine check --strict dist/*
       - name: Verify the installed wheel
         env:
-          OQ_DATA_ROOT: ${{ runner.temp }}/oqdata/data
+          OQ_DATA_ROOT: ${{ runner.temp }}/openqdata/data
           OQ_DATA_TEST_MODE: '0'
         run: |
           python -m pip install dist/*.whl
           python -I - <<'PY'
           from importlib.metadata import version
 
-          import oqdata
-          import oqdata.benchmark
-          import oqdata.models
-          from oqdata.arbfree.arbfree import MkArbFree
-          from oqdata.widb.arbfree import mk_arb_free_day
+          import openqdata
+          import openqdata.benchmark
+          import openqdata.models
+          from openqdata.arbfree.arbfree import MkArbFree
+          from openqdata.widb.arbfree import mk_arb_free_day
 
-          assert version('oqdata') == oqdata.__version__
-          print(f'Installed oqdata {oqdata.__version__}')
+          assert version('openqdata') == openqdata.__version__
+          print(f'Installed openqdata {openqdata.__version__}')
           PY
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
@@ -89,7 +89,7 @@ jobs:
     timeout-minutes: 10
     environment:
       name: pypi
-      url: https://pypi.org/p/oqdata
+      url: https://pypi.org/p/openqdata
     permissions:
       id-token: write
     steps:

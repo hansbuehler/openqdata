@@ -29,7 +29,7 @@ The existing CI command runs these alongside all other offline source/processing
 
 ## Commit hook
 
-The tracked `.githooks/pre-commit` runs the full offline suite against the working tree, using the active environment's `python`. It creates and removes its own scratch directory beneath `${TMPDIR:-/tmp}/oqdata/`; it never downloads fixtures or installs dependencies.
+The tracked `.githooks/pre-commit` runs the full offline suite against the working tree, using the active environment's `python`. It creates and removes its own scratch directory beneath `${TMPDIR:-/tmp}/openqdata/`; it never downloads fixtures or installs dependencies.
 
 ```sh
 git config core.hooksPath .githooks
@@ -39,7 +39,7 @@ git hook run pre-commit
 Activate the environment containing `.[test]` first, or select its interpreter explicitly:
 
 ```sh
-OQDATA_TEST_PYTHON=/path/to/environment/bin/python git hook run pre-commit
+OPENQDATA_TEST_PYTHON=/path/to/environment/bin/python git hook run pre-commit
 ```
 
 The hook is configured locally for this checkout; other clones can opt in with the command above. It does not replace the Python-version CI matrix. To disable this checkout's hook configuration, use `git config --unset core.hooksPath`.

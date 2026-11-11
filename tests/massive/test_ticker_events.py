@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import polars as pl
 import pytest
 
-from oqdata.massive import MassiveClient
+from openqdata.massive import MassiveClient
 
 
 @pytest.mark.parametrize("mapping_records", [False, True])

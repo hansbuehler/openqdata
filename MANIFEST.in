@@ -1,5 +1,5 @@
 include README.md
-include oqdata.example.toml
+include openqdata.example.toml
 recursive-include docs *.md *.py
 recursive-include src README.md
 recursive-exclude src *.ipynb

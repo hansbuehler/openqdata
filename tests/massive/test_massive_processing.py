@@ -5,7 +5,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from oqdata.massive.processing import (
+from openqdata.massive.processing import (
     SCHEMA_ALIGN_QUOTES_TO_TRADES,
     SCHEMA_ALIGN_TRADES_TO_QUOTES,
     align_quotes_to_trades,
@@ -13,7 +13,7 @@ from oqdata.massive.processing import (
     filter_valid_quotes,
     filter_valid_trades,
 )
-from oqdata.massive.testing.scope import DATES, TICKERS
+from openqdata.massive.testing.scope import DATES, TICKERS
 
 pytestmark = pytest.mark.usefixtures("synthetic_massive")
 

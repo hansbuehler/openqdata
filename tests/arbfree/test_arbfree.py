@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from cdxcore.verbose import Context
 
-from oqdata.arbfree.arbfree import MkArbFree
+from openqdata.arbfree.arbfree import MkArbFree
 
 surface_sample = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_data/synthetic_widb.py"))["surface_sample"]
 

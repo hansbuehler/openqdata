@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from oqdata.cli import run_module
+from openqdata.cli import run_module
 
 
 def _run(monkeypatch, function, arguments):

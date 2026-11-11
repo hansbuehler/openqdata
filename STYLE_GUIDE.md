@@ -9,7 +9,7 @@
 ## System and Environment
 
 - Support Linux and Windows development environments.
-- Install this checkout with ``pip install -e '.[test]'``; package source is in ``src/oqdata``.
+- Install this checkout with ``pip install -e '.[test]'``; package source is in ``src/openqdata``.
 - ``cdxcore`` is a dependency declared in ``pyproject.toml``.
 
 
@@ -21,7 +21,7 @@
 - Use Ruff leniently on changed files. At minimum, check import sorting with `ruff check --select I`; do not introduce broad lint cleanup into a focused change. Do not impose a 100-character target line length.
 - Align equal signs across lines where reasonable.
 - Add comments before non-obvious blocks where they explain intent, statistical meaning, financial timing, or a numerical safeguard. Do not comment code whose purpose is already clear.
-- Follow the modern style in `oqdata/` and `tests/`: four-space indentation, compact but readable expressions, and descriptive snake_case names.
+- Follow the modern style in `openqdata/` and `tests/`: four-space indentation, compact but readable expressions, and descriptive snake_case names.
 - Do not mechanically reformat legacy research modules as part of an unrelated change. Match the local style where a narrow edit is safer.
 - Do not import from random packages. E.g. if ``numpy/np`` is missing import from ``numpy`` not elsewhere. Flag if an import is unknown.
 - Prefer explicit keyword-only arguments for configuration-heavy APIs. Use positional parameters only sparingly (e.g. where the parameter is natural from the context).

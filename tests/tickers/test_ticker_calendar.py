@@ -4,8 +4,8 @@ from datetime import date
 
 import polars as pl
 
-from oqdata.biz_calendar import DateRange
-from oqdata.tickers.ticker_calendar import (
+from openqdata.biz_calendar import DateRange
+from openqdata.tickers.ticker_calendar import (
     EXPIRY,
     SCHEMA_TICKER_CALENDAR,
     get_standard_expiries,

@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "oqdata"
+name = "openqdata"
 version = "0.2.0"
 license = "PolyForm-Noncommercial-1.0.0"
 license-files = ["LICENSE", "NOTICE"]
@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/hansbuehler/oqdata"
+Repository = "https://github.com/hansbuehler/openqdata"
 
 [project.optional-dependencies]
 jax = ["jax"]
@@ -33,7 +33,7 @@ docs = ["sphinx>=8", "myst-parser"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["oqdata*"]
+include = ["openqdata*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -5,7 +5,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-import oqdata.fred.rates as rates
+import openqdata.fred.rates as rates
 
 
 def test_fred_fallback_scaling_and_forward_fill(monkeypatch):

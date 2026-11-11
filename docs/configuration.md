@@ -1,15 +1,15 @@
 # Configuration
 
-Only `raw` and `processed` storage locations are required. Configure before importing `oqdata`.
+Only `raw` and `processed` storage locations are required. Configure before importing `openqdata`.
 
-Environment variables take precedence over TOML. `OQ_DATA_CONFIG` selects a required config file; otherwise the first existing file wins: `./oqdata.toml`, `./qdata.toml`, `$XDG_CONFIG_HOME/oqdata/config.toml`, `$XDG_CONFIG_HOME/qdata/config.toml`, `~/.oqdata.toml`, then `~/.qdata.toml`. `XDG_CONFIG_HOME` defaults to `~/.config`. The legacy paths remain supported. See `oqdata.example.toml`; relative TOML paths resolve against the configuration file directory. The default data root remains `~/.local/share/qdata` so existing caches stay accessible; use `OQ_DATA_ROOT` or TOML to select another root.
+Environment variables take precedence over TOML. `OQ_DATA_CONFIG` selects a required config file; otherwise the first existing file wins: `./openqdata.toml`, `./qdata.toml`, `$XDG_CONFIG_HOME/openqdata/config.toml`, `$XDG_CONFIG_HOME/qdata/config.toml`, `~/.openqdata.toml`, then `~/.qdata.toml`. `XDG_CONFIG_HOME` defaults to `~/.config`. The legacy paths remain supported. See `openqdata.example.toml`; relative TOML paths resolve against the configuration file directory. The default data root remains `~/.local/share/qdata` so existing caches stay accessible; use `OQ_DATA_ROOT` or TOML to select another root.
 
 ```toml
 [data]
-root = "/data/oqdata"
+root = "/data/openqdata"
 # Optional individual overrides:
-# raw = "/data/oqdata/raw"
-# processed = "/data/oqdata/processed"
+# raw = "/data/openqdata/raw"
+# processed = "/data/openqdata/processed"
 cache_mode = "on"
 ```
 
@@ -22,3 +22,6 @@ Provider credentials retain provider names: `FRED_API_KEY`, `MASSIVE_TOKEN`, and
 ## Python 3.14 and WRDS
 
 The vendor WRDS SDK pins a Pandas release that is incompatible with Python 3.14. On 3.14 the same WIDBClient uses a small SQLAlchemy/PostgreSQL transport, retaining raw_sql, list_libraries and list_tables. Authentication uses the standard libpq `.pgpass` file or `PGPASSFILE`; create that file outside this repository. `WRDS_USERNAME` is still the username setting. The transport uses TLS and the standard WRDS endpoint; `PGHOST`, `PGPORT`, `PGDATABASE` can override it. It does not provide the SDK's interactive password-setup wizard. Live authentication has not been exercised during consolidation.
+
+
+Existing storage is reused without moving or regenerating it. When no new configuration exists, the corresponding `oqdata` configuration paths are also recognized. If the new default data directory does not exist, an existing `~/.local/share/oqdata` or `~/.local/share/qdata` is reused, in that order. `OQ_DATA_*` variables, cache IDs and numerical pipeline versions are unchanged by the package rename. Historical manifests retain their recorded paths and provenance.

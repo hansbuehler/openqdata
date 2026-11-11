@@ -2,12 +2,12 @@ from datetime import date
 
 import pytest
 
-from oqdata import env
-from oqdata.fred.rates import _fetch_fred_series, load_fred_rates
-from oqdata.massive import MassiveClient
-from oqdata.vixdata import load_cboe_vix, refresh_cboe_vix
-from oqdata.widb import WIDBClient
-from oqdata.yahoo import YFClient
+from openqdata import env
+from openqdata.fred.rates import _fetch_fred_series, load_fred_rates
+from openqdata.massive import MassiveClient
+from openqdata.vixdata import load_cboe_vix, refresh_cboe_vix
+from openqdata.widb import WIDBClient
+from openqdata.yahoo import YFClient
 
 
 @pytest.mark.parametrize("operation", [
@@ -31,7 +31,7 @@ def test_missing_fred_cache_does_not_fall_back_to_network(monkeypatch):
 
 
 def test_missing_cboe_cache_does_not_fall_back_to_network(monkeypatch):
-    import oqdata.vixdata.cboe as cboe
+    import openqdata.vixdata.cboe as cboe
     monkeypatch.setattr(cboe._raw_cache, "read", lambda *a, **kw: None)
     with pytest.raises(RuntimeError, match="disabled"):
         load_cboe_vix()

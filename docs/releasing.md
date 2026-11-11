@@ -1,4 +1,4 @@
-# Releasing oqdata
+# Releasing openqdata
 
 Releases use version tags on commits already merged into `main`. A branch for every release is unnecessary; use a maintenance branch only when an older release line needs independent fixes. The current workflow accepts only commits belonging to `main`.
 
@@ -8,9 +8,9 @@ Create a PyPI account, enable two-factor authentication, and register a pending 
 
 | Field | Value |
 | --- | --- |
-| PyPI project | `oqdata` |
+| PyPI project | `openqdata` |
 | GitHub owner | `hansbuehler` |
-| Repository | `oqdata` |
+| Repository | `openqdata` |
 | Workflow filename | `release.yml` |
 | Environment | `pypi` |
 
@@ -20,14 +20,14 @@ A pending publisher creates the PyPI project on its first successful upload; it 
 
 ## Make a release
 
-1. Update both `[project].version` in `pyproject.toml` and `oqdata.__version__` in `src/oqdata/__init__.py` to the same unused version.
+1. Update both `[project].version` in `pyproject.toml` and `openqdata.__version__` in `src/openqdata/__init__.py` to the same unused version.
 2. Merge the change into `main` and let the offline CI checks pass.
 3. Tag that commit with `v` followed by the exact package version. For example, for version `0.2.0`:
 
    ```sh
    git switch main
    git pull --ff-only
-   git tag -a v0.2.0 -m 'oqdata 0.2.0'
+   git tag -a v0.2.0 -m 'openqdata 0.2.0'
    git push origin v0.2.0
    ```
 
@@ -37,7 +37,7 @@ A pending publisher creates the PyPI project on its first successful upload; it 
 After publication, users can install the release with:
 
 ```sh
-python -m pip install oqdata==0.2.0
+python -m pip install openqdata==0.2.0
 ```
 
 PyPI releases cannot be overwritten with different files; changes require a new version. Building a release does not access licensed caches or regenerate data. The distributions contain the package, documentation and synthetic offline test inputs; benchmark extensions and datasets remain separately distributed.
