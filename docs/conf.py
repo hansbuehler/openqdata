@@ -1,6 +1,10 @@
 """Minimal Sphinx/MyST documentation scaffold."""
-project = "openqdata"
-release = "0.1.0"
+import tomllib
+from pathlib import Path
+
+metadata = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text())["project"]
+project = metadata["name"]
+release = metadata["version"]
 extensions = ["myst_parser", "sphinx.ext.autodoc"]
 source_suffix = {".md": "markdown"}
 master_doc = "index"
