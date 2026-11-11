@@ -35,6 +35,8 @@ The normal paper ordering is **clean → enrich → initial linear fit → eligi
 | Settlement flag | Retain only provider `ss_flag == "0"`. This is separate from AM/PM settlement; AM options are not excluded by this rule. |
 | Pairing | Inner-join surviving calls and puts on expiry, AM/PM settlement, exercise style and strike. A quote without its matching call/put is not a usable paired row. |
 
+Observation-date exclusions and expiry-date exclusions are separate. **2025-01-08** is explicitly listed in [`BAD.DAYS_ALL`](../src/quantdata/widb/bad.py), so it raises by default or returns an empty frame before provider access with `raise_if_bad_day=False`, even if vendor quotes exist. Its historical SANOS calibration was never attempted. The blacklist comment only says `expiries with zero business days?`; no fitting failure is documented as justification. **2025-01-09** was a market closure and is separately listed as an irregular expiry. The current expiry filter therefore does not itself justify excluding the entire January 8 observation day. See the [coverage and provenance note](retained-model-day-gaps.md) before reassessing that inherited exclusion.
+
 Spot and previous-business-day spot, a zero curve and provider forwards are required. Reference-forward checks reject suspicious values or duplicate expiry/settlement keys; one recognized `spot / 1_000_000` data error is repaired to spot. These are data-integrity checks, not liquidity selection.
 
 Business-day maturity uses the NYSE calendar, with 0.8 business days subtracted for AM settlement and a floor of zero; `tte_y = bdte / 252`. The source quotes remain available as `mkt_call_*` and `mkt_put_*`.

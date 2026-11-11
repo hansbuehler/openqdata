@@ -32,4 +32,6 @@ See [SANOS fitting results](SANOS.md) for historical SPX bid/ask coverage, condi
 
 The package provides the shared `quantdata.benchmark` namespace for separately installed benchmark extensions; see [its README](src/quantdata/benchmark/README.md).
 
+Independently installed model packages use the shared `quantdata.models` namespace, for example `quantdata.models.example`, and depend on the core package. See the [model-package layout and installation example](src/quantdata/models/README.md).
+
 This repository contains no licensed observations or benchmark datasets. Offline tests use independent synthetic inputs; examples require users to supply their own provider access. Licensed caches are kept outside Git.

@@ -39,6 +39,38 @@ Filtering mainly improves speed: at smoothness 0.25, median fit time falls from 
 
 Licensed observations, caches, models and diagnostics remain outside Git.
 
+## Saved daily ArbFreePricer parameters
+
+The completed historical run stores the full `ArbFreePricer.to_dict()` state for every day and each of the six fits in licensed storage on this host:
+
+```text
+/home/hans/quantdata_data/quant_data/qdata/runs/spx-private-public-20261101T135819Z-819d9b59/days/<YYYY-MM-DD>/models/<label>/model.h5
+```
+
+`label` is one of `all-0`, `all-0.1`, `all-0.25`, `flt-0`, `flt-0.1`, or `flt-0.25`. Each day's `report.json`, alongside its `models` directory, also records the exact path under `fits[label]["model_path"]`. The separate `cache_path` points to fitted observation rows, not the serialized pricer.
+
+Reload a saved pricer without recalibrating:
+
+```python
+from pathlib import Path
+
+from cdxcore.subdir import SubDir
+from quantdata.arbfree.arbfree import ArbFreePricer
+
+root = Path("/home/hans/quantdata_data/quant_data/qdata/runs/spx-private-public-20261101T135819Z-819d9b59")
+path = root / "days/2025-08-29/models/all-0.25/model.h5"
+saved = SubDir(str(path.parent), fmt=SubDir.PYTREE_HDF5).read(path.stem)
+model = ArbFreePricer.from_dict(saved)
+```
+
+`model.mstrikes` and `model.mdensities` retain the surface grids and calibrated probability masses; `model.xstrikes` and `model.xdensities` retain the preliminary per-expiry fits. Maturities, smoothing settings, quote arrays and fitted prices are also retained. DLV arrays are not stored separately; they can be derived from the saved surface grids, masses and maturities. `model.variances` stores the reference ATM total variances, giving reference ATM volatilities as `sqrt(model.variances / model.expiries)`. Actual fitted ATM implied volatilities come from `model.price(model.expiries[:, None], strikes=1.0, mode="surface", and_vols=True)`, whose second return value contains those volatilities. The [market-data manual](docs/market-data.md) describes the general storage workflow.
+
+## Date coverage and the older 891-date panel
+
+From 2022-01-03 through 2025-08-29, all six benchmark extracts and the saved daily pricers contain **910 dates**. An older derived affine-200 model panel contains only **891**: it inherited 19 historical failures while loading smoothness-0.25 market surfaces, comprising 15 reported 300-second timeout/iteration-limit cases and four Clarabel solver errors. Later calibration-tensor preparation reused the 891 retained dates. All 19 dates have since completed successfully in the current archive for all six fits. See the [per-date reasons and provenance](docs/retained-model-day-gaps.md); these gaps belong to the older derived panel, and the current extracts retain all 910 dates.
+
+**2025-01-08 is excluded from both date populations by `BAD.DAYS_ALL`.** The loader returns an empty frame before provider access when `raise_if_bad_day=False`, so its SANOS fit was never attempted. The only recorded justification is the tentative comment `expiries with zero business days?`; this is not a demonstrated solver failure. **2025-01-09 was a market closure**, a separate calendar exclusion, and quotes for that irregular expiry are also filtered out by default. The whole-day January 8 exclusion needs reassessment against its quotes under the current expiry cleaning before changing the published date scope.
+
 ## Reference quotes versus original markets
 
 For the actual market fit, the fitted call price `Cfit` and its parity-derived put `Pfit = Cfit - DF*(F-K)` must **both** lie inside their respective original bid/ask intervals. Equivalently, require `L <= Cfit <= U`, where `L = max(call_bid, put_bid + DF*(F-K))` and `U = min(call_ask, put_ask + DF*(F-K))`. A passing observation therefore means both options fit, rather than averaging separate call and put successes.
