@@ -11,6 +11,8 @@ export OQ_DATA_ROOT="$HOME/.local/share/oqdata"
 
 Install from this repository until the first `oqdata` release is published on PyPI. The project was renamed from `quantdata` to avoid that existing PyPI package; update imports to `oqdata`. See the [migration notes](docs/migration.md) for existing caches and separate extensions.
 
+Maintainers: see [releasing to PyPI](docs/releasing.md) for version tags, package checks and publishing approval.
+
 The code is licensed under [PolyForm Noncommercial 1.0.0](LICENSE), with the attribution in [NOTICE](NOTICE). Dependency and provider-data licenses remain separate; this software license grants no rights to redistribute licensed observations or derived datasets. Previously distributed Apache-2.0 copies retain their original license.
 
 ```python

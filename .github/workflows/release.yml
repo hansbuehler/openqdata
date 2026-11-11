@@ -1,0 +1,101 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a commit from main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Check the package version and release tag
+        run: |
+          python - <<'PY'
+          import ast
+          import os
+          import tomllib
+          from pathlib import Path
+
+          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          module = ast.parse(Path('src/oqdata/__init__.py').read_text())
+          declared = next(
+              ast.literal_eval(node.value) for node in module.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == '__version__'
+                      for target in node.targets)
+          )
+          if declared != version:
+              raise SystemExit('pyproject.toml and oqdata.__version__ must agree')
+          if os.environ['GITHUB_REF_TYPE'] == 'tag':
+              if os.environ['GITHUB_REF_NAME'] != f'v{version}':
+                  raise SystemExit(f'Release tag must be v{version}')
+          print(f'Validated oqdata {version}')
+          PY
+      - name: Install packaging tools
+        run: python -m pip install build twine
+      - name: Build the source distribution and wheel
+        run: python -m build
+      - name: Validate package metadata and README
+        run: python -m twine check --strict dist/*
+      - name: Verify the installed wheel
+        env:
+          OQ_DATA_ROOT: ${{ runner.temp }}/oqdata/data
+          OQ_DATA_TEST_MODE: '0'
+        run: |
+          python -m pip install dist/*.whl
+          python -I - <<'PY'
+          from importlib.metadata import version
+
+          import oqdata
+          import oqdata.benchmark
+          import oqdata.models
+          from oqdata.arbfree.arbfree import MkArbFree
+          from oqdata.widb.arbfree import mk_arb_free_day
+
+          assert version('oqdata') == oqdata.__version__
+          print(f'Installed oqdata {oqdata.__version__}')
+          PY
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/oqdata
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: distributions
+          path: dist/
+      - name: Publish the approved distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
