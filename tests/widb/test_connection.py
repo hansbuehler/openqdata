@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import create_engine, text
 
-import quantdata.widb.connection as transport
+import oqdata.widb.connection as transport
 
 
 def test_postgresql_queries_return_dataframe_without_provider_access(monkeypatch):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from quantdata.vixdata.cboe import parse_cboe_vix_csv
+from oqdata.vixdata.cboe import parse_cboe_vix_csv
 
 
 def test_parse_cboe_vix_csv_sorts_and_validates() -> None:

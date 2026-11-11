@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from quantdata.utils.pd import create_empty_df, verify_schema
+from oqdata.utils.pd import create_empty_df, verify_schema
 
 
 def test_create_empty_df_preserves_schema_columns_and_dtypes() -> None:
@@ -130,7 +130,7 @@ def test_verify_schema_rejects_invalid_schema_dtype() -> None:
         verify_schema(df, {"count": object()})
 
 def test_restore_object_strings_preserves_values_and_numeric_validation():
-    from quantdata.utils.pd import restore_object_strings
+    from oqdata.utils.pd import restore_object_strings
     frame = pd.DataFrame({"symbol": pd.Series(["SPX", None], dtype="string"),
                           "value": pd.Series([1., 2.], dtype="float64")})
     schema = {"symbol": np.dtype("O"), "value": np.dtype("float32")}

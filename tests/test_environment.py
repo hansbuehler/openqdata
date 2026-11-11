@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from quantdata import Environment, Locations
+from oqdata import Environment, Locations
 
 
 @pytest.fixture
@@ -30,8 +30,9 @@ def test_defaults_do_not_create_storage(clean_settings):
     assert not (clean_settings / ".local").exists()
 
 
-def test_toml_relative_paths_and_environment_precedence(clean_settings, monkeypatch):
-    config = clean_settings / "qdata.toml"
+@pytest.mark.parametrize("filename", ["oqdata.toml", "qdata.toml"])
+def test_toml_relative_paths_and_environment_precedence(clean_settings, monkeypatch, filename):
+    config = clean_settings / filename
     config.write_text('[data]\nroot="relative"\nraw="vendor"\n')
     monkeypatch.setenv("OQ_DATA_PROCESSED", str(clean_settings / "override"))
     environment = Environment()
@@ -59,11 +60,20 @@ def test_bad_config_is_rejected(clean_settings, content):
         Environment(config)
 
 
-def test_xdg_default_config(clean_settings):
-    config = clean_settings / "config/qdata/config.toml"
+@pytest.mark.parametrize("package", ["oqdata", "qdata"])
+def test_xdg_default_config(clean_settings, package):
+    config = clean_settings / f"config/{package}/config.toml"
     config.parent.mkdir(parents=True)
     config.write_text('[data]\nroot="data"\n')
     assert Path(Environment().locations.raw.path) == config.parent / "data/raw"
+
+
+def test_current_config_precedes_legacy_config(clean_settings):
+    for package in ("oqdata", "qdata"):
+        (clean_settings / f"{package}.toml").write_text(f'[data]\nroot="{package}-data"\n')
+    environment = Environment()
+    assert environment.config_file == clean_settings / "oqdata.toml"
+    assert Path(environment.locations.raw.path) == clean_settings / "oqdata-data/raw"
 
 
 def test_test_mode_ignores_production_storage(clean_settings, monkeypatch):
@@ -98,6 +108,6 @@ def test_invalid_test_mode(clean_settings, monkeypatch):
 
 @pytest.mark.parametrize("source", ["..", "../escape", "/absolute", ""])
 def test_source_names_cannot_escape_locations(source):
-    from quantdata import env
+    from oqdata import env
     with pytest.raises(ValueError):
         env.locations(source)

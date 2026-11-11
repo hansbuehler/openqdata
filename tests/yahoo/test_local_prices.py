@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import quantdata.yahoo.client as yahoo
+import oqdata.yahoo.client as yahoo
 
 
 @pytest.fixture

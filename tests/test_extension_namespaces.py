@@ -11,13 +11,13 @@ import pytest
 def test_extensions_from_separate_installations(tmp_path, namespace):
     extensions = [tmp_path / name for name in ("first", "second")]
     for extension in extensions:
-        package = extension / "quantdata" / namespace / extension.name
+        package = extension / "oqdata" / namespace / extension.name
         package.mkdir(parents=True)
         (package / "__init__.py").write_text(f"answer = {extension.name!r}\n")
     core_source = Path(__file__).resolve().parents[1] / "src"
     script = (
-        f"from quantdata.{namespace}.first import answer as first; "
-        f"from quantdata.{namespace}.second import answer as second; "
+        f"from oqdata.{namespace}.first import answer as first; "
+        f"from oqdata.{namespace}.second import answer as second; "
         "assert (first, second) == ('first', 'second')"
     )
     result = subprocess.run(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from quantdata.massive.trade_conds import ConditionCode, ConditionFlag, pack_conditions
+from oqdata.massive.trade_conds import ConditionCode, ConditionFlag, pack_conditions
 
 
 def test_pack_conditions_combines_known_flags() -> None:

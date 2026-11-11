@@ -1,6 +1,6 @@
 """
-Tests for ticker-level data loading utilities added in quantdata.massive.tickers
-and the session-calendar helpers in quantdata.biz_calendar.
+Tests for ticker-level data loading utilities added in oqdata.massive.tickers
+and the session-calendar helpers in oqdata.biz_calendar.
 
 Mirrors the checks done manually in:
   poly/tickers/test_adj.ipynb
@@ -28,7 +28,7 @@ synthetic = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_dat
 
 
 def test_session_open_close_normal_day() -> None:
-    from quantdata.biz_calendar import session_open_close
+    from oqdata.biz_calendar import session_open_close
 
     open_dt, close_dt, is_half_day = session_open_close(date(2024, 6, 17))
 
@@ -38,7 +38,7 @@ def test_session_open_close_normal_day() -> None:
 
 
 def test_session_open_close_half_day() -> None:
-    from quantdata.biz_calendar import session_open_close
+    from oqdata.biz_calendar import session_open_close
 
     # Black Friday 2024 (confirmed half day in test_biz_calendar.py)
     open_dt, close_dt, is_half_day = session_open_close(date(2024, 11, 29))
@@ -49,7 +49,7 @@ def test_session_open_close_half_day() -> None:
 
 
 def test_full_second_grid_ns_normal_day() -> None:
-    from quantdata.biz_calendar import full_second_grid_ns, session_open_close
+    from oqdata.biz_calendar import full_second_grid_ns, session_open_close
 
     open_dt, close_dt, _ = session_open_close(date(2024, 6, 17))
     grid = full_second_grid_ns(open_dt, close_dt)
@@ -68,7 +68,7 @@ def test_full_second_grid_ns_normal_day() -> None:
 
 
 def test_classify_expiry_normal_day() -> None:
-    from quantdata.massive.expiries import classify_expiry
+    from oqdata.massive.expiries import classify_expiry
 
     # June 24 is after the third Friday of June 2024 (Jun 21), so it can never be
     # selected as the monthly expiry date and is always classified NONE.
@@ -77,7 +77,7 @@ def test_classify_expiry_normal_day() -> None:
 
 
 def test_classify_expiry_monthly() -> None:
-    from quantdata.massive.expiries import classify_expiry
+    from oqdata.massive.expiries import classify_expiry
 
     # Third Friday of January 2024 = Jan 19
     df = classify_expiry(pl.DataFrame({"date": [date(2024, 1, 19)]}))
@@ -85,7 +85,7 @@ def test_classify_expiry_monthly() -> None:
 
 
 def test_classify_expiry_quad_witching() -> None:
-    from quantdata.massive.expiries import classify_expiry
+    from oqdata.massive.expiries import classify_expiry
 
     # Third Friday of March 2024 = Mar 15 (quad witching)
     df = classify_expiry(pl.DataFrame({"date": [date(2024, 3, 15)]}))
@@ -93,7 +93,7 @@ def test_classify_expiry_quad_witching() -> None:
 
 
 def test_classify_expiry_is_independent_of_other_rows() -> None:
-    from quantdata.massive.expiries import classify_expiry
+    from oqdata.massive.expiries import classify_expiry
 
     # Each date is classified on its own: weeklies are not monthly expiries, and the
     # month's standard expiry is recognised without the rest of the month present.
@@ -114,7 +114,7 @@ def test_classify_expiry_is_independent_of_other_rows() -> None:
     (date(2024, 6, 21), False, None),
 ])
 def test_ticker_expiries_day_codes(monkeypatch, day, expiring, expected) -> None:
-    from quantdata.massive import expiries
+    from oqdata.massive import expiries
 
     rows = [{"expiration_date": day.isoformat(), "ticker": "O:SPY"}] if expiring else []
     monkeypatch.setattr(expiries.MassiveClient, "paginate", lambda self, url, params: rows)
@@ -122,7 +122,7 @@ def test_ticker_expiries_day_codes(monkeypatch, day, expiring, expected) -> None
 
 
 def test_classify_expiry_shifted_when_friday_is_holiday() -> None:
-    from quantdata.massive.expiries import classify_expiry
+    from oqdata.massive.expiries import classify_expiry
 
     # Good Friday 2022 (Apr 15) is a market holiday — the third Friday of April falls on it.
     # When only trading days are passed (Apr 15 absent), expiry shifts to Thu Apr 14.
@@ -140,7 +140,7 @@ def test_classify_expiry_shifted_when_friday_is_holiday() -> None:
 
 
 def test_get_listing_date() -> None:
-    from quantdata.massive.tickers.basics import get_listing_date
+    from oqdata.massive.tickers.basics import get_listing_date
 
     d = get_listing_date("SPY")
 
@@ -149,7 +149,7 @@ def test_get_listing_date() -> None:
 
 
 def test_adjustment_factors_aapl(monkeypatch) -> None:
-    from quantdata.massive import MassiveClient
+    from oqdata.massive import MassiveClient
 
     client = MassiveClient()
     df = client.adjustment_factors("AAPL", date(2020, 1, 1), date(2021, 1, 1))
@@ -177,7 +177,7 @@ def test_adjustment_factors_aapl(monkeypatch) -> None:
     ("ARKK", date(2023, 1, 1), date(2024, 1, 1), {"ARKK"}),
 ])
 def test_ticker_filtered_history(ticker, start, end, expected_symbols) -> None:
-    from quantdata.massive.tickers.filtered_history import ticker_filtered_history
+    from oqdata.massive.tickers.filtered_history import ticker_filtered_history
 
     # Execute history processing over invented bars, including cache bypass.
     df = ticker_filtered_history(ticker, start, end, num_workers=0, override_cache_mode="off")
@@ -201,8 +201,8 @@ def test_ticker_filtered_history(ticker, start, end, expected_symbols) -> None:
 
 
 def test_build_ticker_calendar_spy() -> None:
-    from quantdata.biz_calendar import DateRange
-    from quantdata.tickers.ticker_calendar import build_ticker_calendar
+    from oqdata.biz_calendar import DateRange
+    from oqdata.tickers.ticker_calendar import build_ticker_calendar
 
     dr = DateRange(date(2024, 1, 2), date(2024, 3, 31))
     df = build_ticker_calendar.__wrapped__("SPY", dr)
@@ -219,8 +219,8 @@ def test_build_ticker_calendar_spy() -> None:
 
 
 def test_ticker_expiries_short_window() -> None:
-    from quantdata.biz_calendar import get_business_days
-    from quantdata.massive.expiries import ticker_expiries
+    from oqdata.biz_calendar import get_business_days
+    from oqdata.massive.expiries import ticker_expiries
 
     days = get_business_days(date(2024, 1, 2), date(2024, 1, 19))  # ~13 trading days
     df = ticker_expiries("SPY", days, num_workers=4, threading=True)
@@ -236,8 +236,8 @@ def test_ticker_expiries_short_window() -> None:
 
 
 def test_build_unadjusted_trades(monkeypatch) -> None:
-    from quantdata.massive import MassiveClient
-    from quantdata.massive.tickers.data import build_unadjusted_trades
+    from oqdata.massive import MassiveClient
+    from oqdata.massive.tickers.data import build_unadjusted_trades
 
     sample = synthetic["trades"](date(2024, 1, 2))
     monkeypatch.setattr(MassiveClient, "fetch_trades", lambda self, ticker, d: sample)
@@ -252,7 +252,7 @@ def test_build_unadjusted_trades(monkeypatch) -> None:
 
 
 def test_build_1s_trade_bars() -> None:
-    from quantdata.massive.tickers.data import build_1s_trade_bars
+    from oqdata.massive.tickers.data import build_1s_trade_bars
 
     sample = synthetic["trades"](date(2024, 1, 2))
     df = build_1s_trade_bars("SPY", date(2024, 1, 2), trades=sample)
@@ -269,7 +269,7 @@ def test_build_1s_trade_bars() -> None:
 
 
 def test_supplied_trades_bypass_the_cache(monkeypatch) -> None:
-    from quantdata.massive.tickers import data
+    from oqdata.massive.tickers import data
 
     def cached(*args, **kwargs):
         raise AssertionError("caller-supplied trades must not read or write the default cache")

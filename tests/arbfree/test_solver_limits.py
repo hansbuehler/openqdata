@@ -4,7 +4,7 @@ import cvxpy as cp
 import numpy as np
 import pytest
 
-from quantdata.arbfree.sanos_tools import SanosLPSolver
+from oqdata.arbfree.sanos_tools import SanosLPSolver
 
 
 @pytest.mark.parametrize('algorithm,is_fallback', [('simplex', False), ('clarabel', False), ('simplex', True)])

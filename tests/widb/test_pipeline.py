@@ -20,14 +20,14 @@ from cdxcore.subdir import SubDir
 from cdxcore.uniquehash import named_unique_filename48_8
 from cdxcore.verbose import Context
 
-from quantdata.arbfree.arbfree import ArbFreePricer, MkArbFree
-from quantdata.biz_calendar import DAYS_PER_YEAR, DateRange, count_business_days_between
-from quantdata.pool import PoolConfig
-from quantdata.widb import WIDBClient, arbfree, day, timeseries
-from quantdata.widb.arbfree import mk_arb_free_day
-from quantdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enrich_day
-from quantdata.widb.options_filter import OptionsFilter, filter_options_day
-from quantdata.widb.timeseries import TimeSeriesDefinition, build_time_series
+from oqdata.arbfree.arbfree import ArbFreePricer, MkArbFree
+from oqdata.biz_calendar import DAYS_PER_YEAR, DateRange, count_business_days_between
+from oqdata.pool import PoolConfig
+from oqdata.widb import WIDBClient, arbfree, day, timeseries
+from oqdata.widb.arbfree import mk_arb_free_day
+from oqdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enrich_day
+from oqdata.widb.options_filter import OptionsFilter, filter_options_day
+from oqdata.widb.timeseries import TimeSeriesDefinition, build_time_series
 
 synthetic_day = runpy.run_path(str(Path(__file__).resolve().parents[1] / "stored_data/synthetic_widb.py"))["provider_day"]
 DAY = date(2005, 11, 21)
@@ -416,7 +416,7 @@ def test_time_series_default_writes_and_reuses_daily_cache_without_provider(tmp_
     environment = os.environ.copy()
     config = tmp_path / "config.toml"
     config.write_text("", encoding="utf-8")
-    environment.update(OQ_DATA_ROOT=str(tmp_path), QUANTDATA_ROOT=str(tmp_path),
+    environment.update(OQ_DATA_ROOT=str(tmp_path),
                        OQ_DATA_CONFIG=str(config), OQ_DATA_RAW=str(tmp_path / "raw"),
                        OQ_DATA_PROCESSED=str(tmp_path / "processed"),
                        OQ_DATA_TEST_MODE="0", OQ_DATA_CACHE_MODE="on", PYTHONDONTWRITEBYTECODE="1",
@@ -442,7 +442,7 @@ def test_time_series_bad_day_raises_or_skips_explicitly(provider_inputs, monkeyp
 
 
 def test_private_filtered_cache_fits_after_selection(linear_day, monkeypatch):
-    from quantdata.arbfree.widb_sanos_day import fit_sanos_day
+    from oqdata.arbfree.widb_sanos_day import fit_sanos_day
     enriched, linear = linear_day
     expected = filter_options_day("SPX", DAY, source_data=linear, options_filter=OptionsFilter(normalize=False), verbose=Context.quiet)
     calls = []

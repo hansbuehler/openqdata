@@ -7,14 +7,14 @@ import polars as pl
 import pytest
 from click.testing import CliRunner
 
-from quantdata.massive import MassiveClient
-from quantdata.massive.options import contracts
-from quantdata.massive.options.contracts import (
+from oqdata.massive import MassiveClient
+from oqdata.massive.options import contracts
+from oqdata.massive.options.contracts import (
     REJECTED,
     ContractsFilter,
     filter_contracts,
 )
-from quantdata.pool import PoolConfig
+from oqdata.pool import PoolConfig
 
 
 def test_filter_contracts_value_ranges(monkeypatch, synthetic_massive) -> None:

@@ -12,7 +12,7 @@ os.environ["OQ_DATA_TEST_ROOT"] = str(Path(__file__).parent / "stored_data")
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch):
     def blocked(*args, **kwargs):
-        raise AssertionError("Network access is forbidden in qdata tests")
+        raise AssertionError("Network access is forbidden in oqdata tests")
     monkeypatch.setattr(socket.socket, "connect", blocked)
     monkeypatch.setattr(socket, "create_connection", blocked)
 
@@ -22,11 +22,11 @@ def synthetic_massive(monkeypatch):
     """Use real client conversions over invented endpoint payloads."""
     import polars as pl
 
-    import quantdata.massive.expiries
-    import quantdata.massive.tickers.data
-    import quantdata.massive.tickers.filtered_history
-    from quantdata.massive import MassiveClient
-    from quantdata.yahoo import YFClient
+    import oqdata.massive.expiries
+    import oqdata.massive.tickers.data
+    import oqdata.massive.tickers.filtered_history
+    from oqdata.massive import MassiveClient
+    from oqdata.yahoo import YFClient
     inputs = runpy.run_path(str(Path(__file__).parent / "stored_data/synthetic_massive.py"))
     for name in dir(MassiveClient):
         method = getattr(MassiveClient, name)

@@ -1,6 +1,6 @@
 # Massive API coverage and trade defaults
 
-Set `MASSIVE_TOKEN` and an external `OQ_DATA_ROOT` before importing `quantdata`.
+Set `MASSIVE_TOKEN` and an external `OQ_DATA_ROOT` before importing `oqdata`.
 
 ## Supported endpoint families
 
@@ -51,8 +51,8 @@ condition flags determine this exclusion.
 To construct bars from the condition-filtered stream:
 
 ```python
-from quantdata.massive.processing import filter_valid_trades
-from quantdata.massive.tickers.data import build_1s_trade_bars
+from oqdata.massive.processing import filter_valid_trades
+from oqdata.massive.tickers.data import build_1s_trade_bars
 
 trades = filter_valid_trades(ticker, d)
 bars = build_1s_trade_bars(ticker, d, trades=trades)

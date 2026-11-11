@@ -6,7 +6,7 @@ Everything fits all reasonable paired observations after raw and expiry validati
 
 Two ticker-level historical day exclusions, 2006-11-17 and 2015-08-21, use previously reconstructed, retained observations. These date-scope overrides are recorded in the public provenance; licensed input paths remain outside Git.
 
-**The table and graphs below measure the fit to the constructed ("fixed") reference call quotes.** They do not measure whether the fitted call and its parity-derived put both lie inside their original markets. The [quote construction](src/quantdata/widb/day.py) converts put quotes to calls using the implied forward and discount factor, takes the midpoint between the higher bid and lower ask, then assigns the smaller of the original call and put spreads. This interval can differ from the actual overlap of the two markets, including when they do not overlap at all. The [original-market comparison](#reference-quotes-versus-original-markets) below excludes those inverted pairs from evaluation only; all saved calibrations remain unchanged.
+**The table and graphs below measure the fit to the constructed ("fixed") reference call quotes.** They do not measure whether the fitted call and its parity-derived put both lie inside their original markets. The [quote construction](src/oqdata/widb/day.py) converts put quotes to calls using the implied forward and discount factor, takes the midpoint between the higher bid and lower ask, then assigns the smaller of the original call and put spreads. This interval can differ from the actual overlap of the two markets, including when they do not overlap at all. The [original-market comparison](#reference-quotes-versus-original-markets) below excludes those inverted pairs from evaluation only; all saved calibrations remain unchanged.
 
 | Population | Smoothness | Dates | Mean daily within bid/ask | Mean daily conditional excess | Median daily conditional median | Median runtime (s) |
 |---|---:|---:|---:|---:|---:|---:|
@@ -55,7 +55,7 @@ Reload a saved pricer without recalibrating:
 from pathlib import Path
 
 from cdxcore.subdir import SubDir
-from quantdata.arbfree.arbfree import ArbFreePricer
+from oqdata.arbfree.arbfree import ArbFreePricer
 
 root = Path("/home/hans/quantdata_data/quant_data/qdata/runs/spx-private-public-20261101T135819Z-819d9b59")
 path = root / "days/2025-08-29/models/all-0.25/model.h5"

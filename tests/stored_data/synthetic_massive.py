@@ -8,8 +8,8 @@ import numpy as np
 import polars as pl
 import requests
 
-from quantdata.biz_calendar import TZ_NY, session_open_close
-from quantdata.massive import MassiveClient
+from oqdata.biz_calendar import TZ_NY, session_open_close
+from oqdata.massive import MassiveClient
 
 
 def trades(day: date, count: int = 1000) -> pl.DataFrame:

@@ -1,3 +1,3 @@
 # Source layout
 
-The installable `quantdata` distribution exposes `quantdata` imports. Source-specific modules live below `quantdata/`; tests mirror those directories.
+The installable `oqdata` distribution exposes `oqdata` imports. Source-specific modules live below `oqdata/`; tests mirror those directories.

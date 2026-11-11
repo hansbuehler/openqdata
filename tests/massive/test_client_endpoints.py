@@ -8,9 +8,9 @@ import polars as pl
 import pytest
 import requests
 
-from quantdata.massive import MassiveClient
-from quantdata.massive.processing import filter_valid_trades
-from quantdata.massive.trade_conds import NORMAL_TRADE_EXCLUDE_FLAGS
+from oqdata.massive import MassiveClient
+from oqdata.massive.processing import filter_valid_trades
+from oqdata.massive.trade_conds import NORMAL_TRADE_EXCLUDE_FLAGS
 
 
 @pytest.fixture

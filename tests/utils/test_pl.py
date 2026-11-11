@@ -3,7 +3,7 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-from quantdata.utils.pl import create_empty_df, verify_schema
+from oqdata.utils.pl import create_empty_df, verify_schema
 
 
 def test_create_empty_df_preserves_schema_columns_and_dtypes() -> None:

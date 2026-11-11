@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtr
 
-from quantdata.biz_calendar import count_business_days_between
+from oqdata.biz_calendar import count_business_days_between
 
 
 def call_price(strikes: np.ndarray, tte: float, vol: float = .25) -> np.ndarray:

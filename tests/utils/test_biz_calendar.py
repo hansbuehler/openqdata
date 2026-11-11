@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pytest
 
-from quantdata.biz_calendar import (
+from oqdata.biz_calendar import (
     DateRange,
     add_business_days,
     count_business_days_between,

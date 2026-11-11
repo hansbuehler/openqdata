@@ -1,6 +1,6 @@
 # The 19 gaps in the retained 2022–2025 model panel
 
-All six quantdata SPX benchmark extracts contain **910 dates from 2022-01-03 through 2025-08-29**. Their dates match the completed daily `ArbFreePricer` archive exactly. The older derived hedging panel contains **891** of those dates: it inherited a historical market-loading failure list before the retained affine-200 DLV model was trained.
+All six oqdata SPX benchmark extracts contain **910 dates from 2022-01-03 through 2025-08-29**. Their dates match the completed daily `ArbFreePricer` archive exactly. The older derived hedging panel contains **891** of those dates: it inherited a historical market-loading failure list before the retained affine-200 DLV model was trained.
 
 ## Why the dates disappeared
 
@@ -45,7 +45,7 @@ Here "missing" on **2025-01-08** means a policy exclusion, not an absence of quo
 | 2024-08-01 | 300-second timeout and/or iteration limit |
 | 2025-05-16 | Clarabel solver error |
 
-All 19 dates have completed, audited models for **both populations and all three smoothness levels** in the current quantdata archive. All 114 corresponding model files exist and their daily reports record `passed`. These historical errors explain the older panel's date selection; they are not current quantdata calibration failures or an additional option-quality filter.
+All 19 dates have completed, audited models for **both populations and all three smoothness levels** in the current oqdata archive. All 114 corresponding model files exist and their daily reports record `passed`. These historical errors explain the older panel's date selection; they are not current oqdata calibration failures or an additional option-quality filter.
 
 ## Verification and reproduction
 

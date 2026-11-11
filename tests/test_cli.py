@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from quantdata.cli import run_module
+from oqdata.cli import run_module
 
 
 def _run(monkeypatch, function, arguments):

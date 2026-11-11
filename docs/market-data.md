@@ -35,7 +35,7 @@ The normal paper ordering is **clean → enrich → initial linear fit → eligi
 | Settlement flag | Retain only provider `ss_flag == "0"`. This is separate from AM/PM settlement; AM options are not excluded by this rule. |
 | Pairing | Inner-join surviving calls and puts on expiry, AM/PM settlement, exercise style and strike. A quote without its matching call/put is not a usable paired row. |
 
-Observation-date exclusions and expiry-date exclusions are separate. **2025-01-08** is explicitly listed in [`BAD.DAYS_ALL`](../src/quantdata/widb/bad.py), so it raises by default or returns an empty frame before provider access with `raise_if_bad_day=False`, even if vendor quotes exist. Its historical SANOS calibration was never attempted. The blacklist comment only says `expiries with zero business days?`; no fitting failure is documented as justification. **2025-01-09** was a market closure and is separately listed as an irregular expiry. The current expiry filter therefore does not itself justify excluding the entire January 8 observation day. See the [coverage and provenance note](retained-model-day-gaps.md) before reassessing that inherited exclusion.
+Observation-date exclusions and expiry-date exclusions are separate. **2025-01-08** is explicitly listed in [`BAD.DAYS_ALL`](../src/oqdata/widb/bad.py), so it raises by default or returns an empty frame before provider access with `raise_if_bad_day=False`, even if vendor quotes exist. Its historical SANOS calibration was never attempted. The blacklist comment only says `expiries with zero business days?`; no fitting failure is documented as justification. **2025-01-09** was a market closure and is separately listed as an irregular expiry. The current expiry filter therefore does not itself justify excluding the entire January 8 observation day. See the [coverage and provenance note](retained-model-day-gaps.md) before reassessing that inherited exclusion.
 
 Spot and previous-business-day spot, a zero curve and provider forwards are required. Reference-forward checks reject suspicious values or duplicate expiry/settlement keys; one recognized `spot / 1_000_000` data error is repaired to spot. These are data-integrity checks, not liquidity selection.
 
@@ -65,7 +65,7 @@ For example, with strike 105, forward 102 and spot 100, enrichment produces `pur
 
 The implied-volatility price tolerance is `min(0.1 * pure_spread, 1e-6)`; the boundary-repricing check allows 1.1 times that tolerance. Enrichment also computes `nms`, `nms_atm`, Greeks and combined liquidity fields; computing these fields does not select an ATM subset.
 
-Source: [day.py](../src/quantdata/widb/day.py), [bad.py](../src/quantdata/widb/bad.py), [calendar and NMS5](../src/quantdata/biz_calendar.py).
+Source: [day.py](../src/oqdata/widb/day.py), [bad.py](../src/oqdata/widb/bad.py), [calendar and NMS5](../src/oqdata/biz_calendar.py).
 
 ## 2. Linear fitting and its own masks
 
@@ -75,7 +75,7 @@ The fitter extends strike boundaries, can trim unsuitable boundary strikes, mask
 
 `mk_arb_free_day` retains **all original strike rows for retained expiries**, with `mask_arb_free` identifying active strikes. `pure_fit1_*` describes the per-expiry fit and `pure_fitX_*` the global fit. Original `pure_bid_price` / `pure_ask_price` remain the calibration observations; later smoothing does not silently replace them with fitted linear mids.
 
-Source: [WIDB arbfree adapter](../src/quantdata/widb/arbfree.py), [MkArbFree and ArbFreePricer](../src/quantdata/arbfree/arbfree.py).
+Source: [WIDB arbfree adapter](../src/oqdata/widb/arbfree.py), [MkArbFree and ArbFreePricer](../src/oqdata/arbfree/arbfree.py).
 
 ## 3. Separate eligible-option filter and 1,000-row cap
 
@@ -98,7 +98,7 @@ Source: [WIDB arbfree adapter](../src/quantdata/widb/arbfree.py), [MkArbFree and
 
 To study eligibility without a cap, retain the other settings and set `max_num_options` above the input row count. That is a different population from the original capped paper-style sample. “Everything” bypasses `OptionsFilter` entirely.
 
-Source: [options_filter.py](../src/quantdata/widb/options_filter.py).
+Source: [options_filter.py](../src/oqdata/widb/options_filter.py).
 
 ## 4. Final surface and fit statistics
 
@@ -112,7 +112,7 @@ The completed historical comparisons are linked from {download}`SANOS.md <../SAN
 
 ## 5. Python example: clean, fit linearly, select, then smooth
 
-Configure the external data root before importing quantdata; see [configuration](configuration.md). This example uses cached provider data where available and may download missing observations in normal mode. Tests use stored inputs and block provider access.
+Configure the external data root before importing oqdata; see [configuration](configuration.md). This example uses cached provider data where available and may download missing observations in normal mode. Tests use stored inputs and block provider access.
 
 `enrich_day` and `mk_arb_free_day` identify cached inputs by ticker, date and configuration, not by the contents of an explicitly supplied frame. If you modify `raw` or `enriched`, pass `override_cache_mode="off"` to those consuming calls so an existing cache cannot override your edits. `filter_options_day(source_data=linear, ...)` itself is uncached and consumes the supplied frame directly.
 
@@ -123,10 +123,10 @@ import numpy as np
 import pandas as pd
 from cdxcore.verbose import Context
 
-from quantdata.arbfree.arbfree import MkArbFree
-from quantdata.widb.arbfree import mk_arb_free_day
-from quantdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enrich_day
-from quantdata.widb.options_filter import OptionsFilter, filter_options_day
+from oqdata.arbfree.arbfree import MkArbFree
+from oqdata.widb.arbfree import mk_arb_free_day
+from oqdata.widb.day import ExpiryFilter, RawDayFilter, collect_raw_day, enrich_day
+from oqdata.widb.options_filter import OptionsFilter, filter_options_day
 
 ticker, day = "SPX", date(2025, 1, 3)
 raw_filter = RawDayFilter()               # bid > 0.011; raw quality rules
@@ -191,8 +191,8 @@ from uuid import uuid4
 
 from cdxcore.subdir import SubDir
 
-from quantdata import env
-from quantdata.arbfree.arbfree import ArbFreePricer
+from oqdata import env
+from oqdata.arbfree.arbfree import ArbFreePricer
 
 run = env.locations.processed(
     f"examples/options-{uuid4().hex}", fmt=SubDir.PYTREE_HDF5,
@@ -206,9 +206,9 @@ restored = ArbFreePricer.from_dict(run.read("sanos"))
 `TimeSeriesDefinition` carries all four configurations into daily processing. `DateRange` controls the calendar; its default excludes early-close days, so choose `exclude_half_days` explicitly when matching a historical run. `PoolConfig.off()` keeps this example serial. Limit concurrent **WRDS downloads** to four if enabling a pool.
 
 ```python
-from quantdata.biz_calendar import DateRange
-from quantdata.pool import PoolConfig
-from quantdata.widb.timeseries import TimeSeriesDefinition, build_time_series
+from oqdata.biz_calendar import DateRange
+from oqdata.pool import PoolConfig
+from oqdata.widb.timeseries import TimeSeriesDefinition, build_time_series
 
 definition = TimeSeriesDefinition(
     raw_day_filter=raw_filter, expiry_filter=expiry_filter,
@@ -224,4 +224,4 @@ series = build_time_series(
 
 This packs the **linearly fitted and selected observations**. With `override_cache_mode="off"`, daily frames are recomputed and packed in memory; no processed-cache files are required. It does not pack the additional smooth `models` created above. Array width is the largest selected day in the requested range, up to the configured cap. Use `series["is_valid"]` to exclude zero-padded slots; it is a padding mask, distinct from the fitter's `mask_arb_free`. For smooth post-filter models over a date range, repeat the explicit selected-surface fit above per date and retain each model and its population statistics separately.
 
-Source: [timeseries.py](../src/quantdata/widb/timeseries.py), [storage configuration](configuration.md), [offline pipeline tests](testing.md).
+Source: [timeseries.py](../src/oqdata/widb/timeseries.py), [storage configuration](configuration.md), [offline pipeline tests](testing.md).

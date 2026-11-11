@@ -12,10 +12,10 @@ from datetime import date
 import polars as pl
 from polars.testing import assert_frame_equal
 from cdxcore.verbose import Context
-from quantdata.massive import MassiveClient
-from quantdata.yahoo import YFClient
-from quantdata.biz_calendar import DateRange
-from quantdata.tickers.ticker_calendar import build_ticker_calendar, SCHEMA_TICKER_CALENDAR
+from oqdata.massive import MassiveClient
+from oqdata.yahoo import YFClient
+from oqdata.biz_calendar import DateRange
+from oqdata.tickers.ticker_calendar import build_ticker_calendar, SCHEMA_TICKER_CALENDAR
 
 def blocked(*args, **kwargs):
     raise AssertionError("Provider access is forbidden")

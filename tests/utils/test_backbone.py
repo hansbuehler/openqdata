@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from quantdata.utils.backbone import BackboneNumpy, are_broadcastable, relu, sigmoid
+from oqdata.utils.backbone import BackboneNumpy, are_broadcastable, relu, sigmoid
 
 
 def test_numpy_backbone_scalar_helpers() -> None:
