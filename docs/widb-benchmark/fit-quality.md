@@ -5,6 +5,8 @@ The [WIDB benchmark data](pipeline.md) pair cleaned SPX quotes with an arbitrage
 - **`all` (Everything)** fits every reasonable paired observation after raw and expiry validation.
 - **`flt` (filtered)** fits the selected book: eligibility criteria and the 1,000-row cap applied after a full-book linear fit.
 
+The licensed caches now also include 44 backfilled early-close sessions, bringing each of the six configurations to 5,195 dates. All 264 additional fits completed successfully, with their calibrated model parameters retained. The tables and graphs on this page describe the original 5,151-date evaluation.
+
 Fit quality is measured in two ways:
 
 1. **Against the constructed reference call quotes** that the fitter calibrates to. This is the main table and the graphs.

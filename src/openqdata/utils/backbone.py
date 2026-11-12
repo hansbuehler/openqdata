@@ -144,10 +144,6 @@ class BackboneNumpy(Backbone):
         assert isinstance( arr, nnp.ndarray ), f"Expected a numpy array, got type {type(arr)}"
         return arr
 
-    def stop_gradient( self , arr : Backbone.Array ) -> Backbone.Array:
-        """ Stop gradient calculation. Does NOT make a copy (NOOP for numpy)"""
-        return arr
-
     def __getattr__(self, name):
         if hasattr(nnp, name):
             return getattr(nnp, name)

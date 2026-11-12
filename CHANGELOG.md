@@ -8,4 +8,5 @@ First public release of openqdata.
 - Connectors, each with a `Client` class: WRDS OptionMetrics IvyDB (`WIDBClient`), Massive (`MassiveClient`), Yahoo Finance (`YFClient`), FRED (`FREDClient`) and Cboe VIX (`CboeClient`).
 - WIDB benchmark data: cleaned daily option quotes with an arbitrage-free SANOS interpolation (`openqdata.widb.sanos.fit_sanos_day`).
 - The `arbfree` toolkit for linear (DLV) and SANOS arbitrage-free option surfaces.
+- Array-based fit diagnostics support masked quotes with or without implied-volatility output.
 - Namespaces for extension packages: `openqdata.models` and `openqdata.benchmark`.

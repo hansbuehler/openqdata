@@ -781,21 +781,13 @@ def _compute_market_fit( pricer : callable, min_half_spread : float,
             r.fits = pricer( expiries[masks] if not masks is None else expiries, strikes[masks] if not masks is None else strikes, and_vols=False )
 
         if not masks is None:
-            x = np.zeros_like(strikes)
-            x[masks] = r.fits
-            r.fits = x
-            x = np.zeros_like(strikes)
-            x[masks] = r.fit_vols
-            r.fit_vols = x
-            del x
-
             asks = asks[masks]
             bids = bids[masks]
 
         half_spread      = 0.5*(asks - bids)
         verify_inp( np.min( half_spread ) > 0, lambda : f"Expected all bid/ask spreads to be positive, but found minimum half spread {half_spread.min():.4g}" )
         half_spread        = np.maximum( half_spread, min_half_spread )
-        r.fit_err          = (np.maximum( 0., f - asks_t ) + np.maximum(0., bids_t - f) ) / half_spread
+        r.fit_err          = (np.maximum( 0., r.fits - asks ) + np.maximum(0., bids - r.fits) ) / half_spread
         bad_fit_mask       = r.fit_err > eps_half_spread
         r.pcnt_fit         = float(np.sum(bad_fit_mask)) / float(len(bad_fit_mask))
         r.mean_err         = np.mean(r.fit_err[bad_fit_mask] ) if np.any(bad_fit_mask) else 0.
@@ -808,6 +800,13 @@ def _compute_market_fit( pricer : callable, min_half_spread : float,
         r.median_err       = yxquantiles[3]
 
         if not masks is None:
+            x = np.zeros_like(strikes)
+            x[masks] = r.fits
+            r.fits = x
+            if and_vols:
+                x = np.zeros_like(strikes)
+                x[masks] = r.fit_vols
+                r.fit_vols = x
             x = np.zeros_like(strikes)
             x[masks] = r.fit_err
             r.fit_err = x
