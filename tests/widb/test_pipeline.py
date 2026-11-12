@@ -441,8 +441,8 @@ def test_time_series_bad_day_raises_or_skips_explicitly(provider_inputs, monkeyp
     assert series["dates"] == [DAY] and series["is_valid"].any()
 
 
-def test_private_filtered_cache_fits_after_selection(linear_day, monkeypatch):
-    from openqdata.arbfree.widb_sanos_day import fit_sanos_day
+def test_filtered_cache_fits_after_selection(linear_day, monkeypatch):
+    from openqdata.widb.sanos import fit_sanos_day
     enriched, linear = linear_day
     expected = filter_options_day("SPX", DAY, source_data=linear, options_filter=OptionsFilter(normalize=False), verbose=Context.quiet)
     calls = []

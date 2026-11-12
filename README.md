@@ -1,39 +1,42 @@
 # openqdata
 
-A standardized data access and processing pipeline for academic research. Targets Python 3.13 and supports Python 3.12–3.14. The distribution and import namespace are both `openqdata`.
+Data connectors and processing pipelines with simple, versioned caching, for academic research in quantitative finance. openqdata is not a trading system and provides no investment advice.
+
+The package has four parts:
+
+1. **Caching and configuration.** Every result is cached under two storage locations, `raw` and `processed`, keyed by its scope and configuration.
+2. **Data connectors.** WRDS OptionMetrics IvyDB (WIDB), Massive, Yahoo Finance, FRED and Cboe VIX. Each source has a `Client` class that holds its authentication and basic access methods.
+3. **The WIDB benchmark data.** Cleaned daily option data from WRDS OptionMetrics IvyDB, together with an arbitrage-free interpolation of each day's quotes. The interpolation is a SANOS surface that prices any strike and maturity.
+4. **The `arbfree` toolkit.** It fits arbitrage-free option surfaces to bid/ask quotes from any source.
+
+Targets Python 3.13 and supports Python 3.12–3.14.
 
 ```sh
-git clone https://github.com/hansbuehler/openqdata.git
-cd openqdata
-python -m pip install -e '.[test]'
+python -m pip install openqdata          # or: pip install -e '.[test]' from a clone
 export OQ_DATA_ROOT="$HOME/.local/share/openqdata"
 ```
 
-Install from this repository until the first `openqdata` release is published on PyPI. The project was renamed from `quantdata` to avoid that existing PyPI package; update imports to `openqdata`. See the [migration notes](docs/migration.md) for existing caches and separate extensions.
-
-Maintainers: see [releasing to PyPI](docs/releasing.md) for version tags, package checks and publishing approval.
-
-The code is licensed under [PolyForm Noncommercial 1.0.0](LICENSE), with the attribution in [NOTICE](NOTICE). Dependency and provider-data licenses remain separate; this software license grants no rights to redistribute licensed observations or derived datasets. Previously distributed Apache-2.0 copies retain their original license.
-
 ```python
-from openqdata import env
-from openqdata.fred import load_fred_rates
-from openqdata.yahoo import YFClient
 from openqdata.widb import WIDBClient
 from openqdata.massive import MassiveClient
+from openqdata.yahoo import YFClient
+from openqdata.fred import FREDClient
+from openqdata.vixdata import CboeClient
 from openqdata.arbfree.arbfree import MkArbFree
 ```
 
-Sources: `fred`, `yahoo`, `widb`, `vixdata`, `massive`, `tickers`; numerical surface tools: `arbfree`.
+## Documentation
 
-See [configuration](docs/configuration.md), [commands](docs/commands.md), [testing](docs/testing.md) and [Massive API coverage and trade defaults](docs/massive.md). [Live validation](docs/live-validation.md) documents the authorized download checks.
+- [Getting started](https://github.com/hansbuehler/openqdata/blob/main/docs/getting-started.md): installation, storage and credentials
+- [Caching, test mode and commands](https://github.com/hansbuehler/openqdata/blob/main/docs/caching.md)
+- [Data connectors](https://github.com/hansbuehler/openqdata/blob/main/docs/connectors/index.md)
+- [WIDB benchmark data](https://github.com/hansbuehler/openqdata/blob/main/docs/widb-benchmark/pipeline.md), [interpolation quality](https://github.com/hansbuehler/openqdata/blob/main/docs/widb-benchmark/fit-quality.md) and [field reference](https://github.com/hansbuehler/openqdata/blob/main/docs/widb-benchmark/fields.md)
+- [The arbfree toolkit](https://github.com/hansbuehler/openqdata/blob/main/docs/arbfree.md)
+- [Extension packages](https://github.com/hansbuehler/openqdata/blob/main/docs/extensions.md)
+- [Development and testing](https://github.com/hansbuehler/openqdata/blob/main/docs/development.md), [releasing](https://github.com/hansbuehler/openqdata/blob/main/docs/releasing.md) and the [changelog](https://github.com/hansbuehler/openqdata/blob/main/CHANGELOG.md)
 
-The [WIDB market-data pipeline](docs/market-data.md) documents the default cleaning before linear fitting separately from eligible-option selection and the 1,000-row cap, with configuration references and executable Python examples.
+## Licensing and data
 
-See [SANOS fitting results](SANOS.md) for historical SPX bid/ask coverage, conditional fit errors, option counts and runtime comparisons.
+The code is licensed under [PolyForm Noncommercial 1.0.0](https://github.com/hansbuehler/openqdata/blob/main/LICENSE), with the attribution in [NOTICE](https://github.com/hansbuehler/openqdata/blob/main/NOTICE). Dependency and provider-data licenses are separate. This software license grants no rights to redistribute licensed observations or derived datasets.
 
-The package provides the shared `openqdata.benchmark` namespace for separately installed benchmark extensions; see [its README](src/openqdata/benchmark/README.md).
-
-Independently installed model packages use the shared `openqdata.models` namespace, for example `openqdata.models.example`, and depend on the core package. See the [model-package layout and installation example](src/openqdata/models/README.md).
-
-This repository contains no licensed observations or benchmark datasets. Offline tests use independent synthetic inputs; examples require users to supply their own provider access. Licensed caches are kept outside Git.
+This repository contains no licensed observations or datasets. Offline tests use synthetic inputs. To run the examples you need your own access to each provider.

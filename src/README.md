@@ -1,3 +1,3 @@
 # Source layout
 
-The installable `openqdata` distribution exposes `openqdata` imports. Source-specific modules live below `openqdata/`; tests mirror those directories.
+The installable `openqdata` distribution. Each subpackage below `openqdata/` is one data source or toolkit; `tests/` mirrors this layout.

@@ -1,8 +1,8 @@
-# Agent Instructions
+# Style guide
 
 ## Scope and priorities
 
-- This repository is a Python 3.12+ quantitative-data and numerical-research codebase.
+- This repository is a Python 3.12+ quantitative-data and numerical-research codebase for academic research. It is not a trading system.
 - Preserve existing user work and notebook workflows. Do not rewrite unrelated code while making a focused change.
 - Treat correctness of measures, densities, sample normalization, array shapes and timing conventions as higher priority than cosmetic cleanup.
 
@@ -22,7 +22,7 @@
 - Align equal signs across lines where reasonable.
 - Add comments before non-obvious blocks where they explain intent, statistical meaning, financial timing, or a numerical safeguard. Do not comment code whose purpose is already clear.
 - Follow the modern style in `openqdata/` and `tests/`: four-space indentation, compact but readable expressions, and descriptive snake_case names.
-- Do not mechanically reformat legacy research modules as part of an unrelated change. Match the local style where a narrow edit is safer.
+- Do not mechanically reformat existing modules as part of an unrelated change. Match the local style where a narrow edit is safer.
 - Do not import from random packages. E.g. if ``numpy/np`` is missing import from ``numpy`` not elsewhere. Flag if an import is unknown.
 - Prefer explicit keyword-only arguments for configuration-heavy APIs. Use positional parameters only sparingly (e.g. where the parameter is natural from the context).
   Validate data types of parameters using ``verify_inp``.

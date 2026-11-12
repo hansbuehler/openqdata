@@ -56,14 +56,8 @@ class Environment:
         explicit = config_file if config_file is not None else os.environ.get("OQ_DATA_CONFIG")
         candidates = [Path(explicit).expanduser()] if explicit is not None else [
             Path.cwd() / "openqdata.toml",
-            Path.cwd() / "qdata.toml",
             Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "openqdata/config.toml",
-            Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "qdata/config.toml",
             Path.home() / ".openqdata.toml",
-            Path.cwd() / "oqdata.toml",
-            Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "oqdata/config.toml",
-            Path.home() / ".oqdata.toml",
-            Path.home() / ".qdata.toml",
         ]
         settings = {}
         for candidate in candidates:
@@ -96,16 +90,7 @@ class Environment:
             raise ValueError("OQ_DATA_TEST_MODE must be 0 or 1; fixture generation is explicit")
         self.test_mode = mode == "1"
         self.generate_test_data_mode = False
-        # Keep the established default so a package rename cannot hide existing caches.
-        default_root = Path.home() / ".local/share/openqdata"
-        # Existing storage keeps its path; changing the import name must not hide caches.
-        if not default_root.exists():
-            for previous in ("oqdata", "qdata"):
-                candidate = Path.home() / ".local/share" / previous
-                if candidate.is_dir():
-                    default_root = candidate
-                    break
-        root = location("root", default_root)
+        root = location("root", Path.home() / ".local/share/openqdata")
         fixture_root = Path(os.environ.get("OQ_DATA_TEST_ROOT", Path(__file__).resolve().parents[2] / "tests/stored_data")).expanduser().resolve()
         self._test_data_locations = Locations.create_from_root(fixture_root)
         cache_mode = "cacheonly" if self.test_mode else os.environ.get("OQ_DATA_CACHE_MODE", settings.get("cache_mode", "on"))

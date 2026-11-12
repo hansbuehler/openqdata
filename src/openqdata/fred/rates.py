@@ -8,16 +8,15 @@ See https://fred.stlouisfed.org/docs/api/api_key.html
 
 from __future__ import annotations
 
-import os
 from datetime import date
 
 import polars as pl
 import requests
-from cdxcore.err import verify
 
 from openqdata import env
+from openqdata.fred.client import FREDClient
 
-_fred_cache = env.locations.raw("fred")
+_fred_cache = FREDClient.locations.raw
 
 
 def _redact(text: str, secret: str) -> str:
@@ -85,11 +84,7 @@ def load_fred_rates(start: str | date, end: str | date) -> pl.DataFrame:
     """
     start = start if not isinstance(start, str) else date.fromisoformat(start)
     end = end if not isinstance(end, str) else date.fromisoformat(end)
-    api_key = os.environ.get("FRED_API_KEY")
-    verify(
-        api_key is not None,
-        "Please set FRED_API_KEY in your environment. See https://fred.stlouisfed.org/docs/api/api_key.html",
-    )
+    api_key = FREDClient.api_key()
 
     series = ["SOFR", "EFFR", "DGS1MO", "DGS3MO", "DGS6MO"]
     dfs = [_fetch_fred_series(api_key=api_key, series_id=s, start=start, end=end) for s in series]

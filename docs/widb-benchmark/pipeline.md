@@ -1,6 +1,11 @@
-# WIDB market-data pipeline and default filters
+# WIDB benchmark data
 
-WRDS/OptionMetrics observations and the resulting fitted caches are **licensed source datasets**. Licensed observations, caches and models remain outside Git.
+The WIDB benchmark data are **cleaned market data with an arbitrage-free interpolation**. For each day, the pipeline produces the following:
+
+- **Cleaned quotes.** Daily [WIDB](../connectors/widb.md) option books with bad data removed, calls and puts paired, implied forwards estimated, and expiries validated. They come in two populations: every usable quote (`all`), and a selected book of liquid, near-the-money options (`flt`).
+- **An arbitrage-free interpolation.** A SANOS surface, fitted with the [arbfree toolkit](../arbfree.md), that stays inside bid/ask wherever possible. It prices any strike and maturity without static arbitrage.
+
+The [interpolation quality](fit-quality.md) page reports how closely these surfaces match the quotes, and the [field reference](fields.md) documents the outputs. WRDS/OptionMetrics observations and every cache fitted from them are **licensed data**. Keep them outside Git.
 
 The pipeline has three distinct kinds of selection: **market-data cleaning before any linear fit**, **the linear fit's own expiry/strike handling**, and **the optional eligible-option selection, capped at 1,000 rows**. The first two also apply to the SANOS “Everything” surface. Only the last produces the paper-style selected population.
 
@@ -18,7 +23,19 @@ One option row represents a **paired call and put at one strike and expiry/settl
 | 5. Fit and assess the chosen population | `MkArbFree`, `ArbFreePricer.compute_market_fit` | Explicit `smoothness=0`, `0.1` or `0.25` | Linear or smooth surface and errors on the chosen input quotes |
 | 6. Store models or pack daily observations | `to_dict` / `from_dict`; `build_time_series` | Data locations; `TimeSeriesDefinition`, `DateRange`, `PoolConfig` | Reloadable model, or padded daily arrays with an `is_valid` mask |
 
-The normal paper ordering is **clean → enrich → initial linear fit → eligible-option selection → fit the selected surface**. Setting a smooth `MkArbFree` inside `TimeSeriesDefinition` instead fits the smooth surface **before** eligible-option selection; it does not create the paper ordering automatically.
+The normal paper ordering is **clean → enrich → initial linear fit → eligible-option selection → fit the selected surface**. `openqdata.widb.sanos.fit_sanos_day` runs exactly this sequence as one cached call:
+
+```python
+from datetime import date
+from openqdata.arbfree.arbfree import MkArbFree
+from openqdata.widb.sanos import fit_sanos_day
+
+rows = fit_sanos_day("SPX", date(2025, 1, 3), MkArbFree(smoothness=0.1))   # selected ("flt") population
+```
+
+It returns the standard fitted daily rows. Its cache key includes the raw, expiry, eligibility and SANOS configurations, so its entries stay separate from full-book `mk_arb_free_day` fits. For the Everything (`all`) population, call `mk_arb_free_day` with the smooth `MkArbFree` directly.
+
+Setting a smooth `MkArbFree` inside `TimeSeriesDefinition` instead fits the smooth surface **before** eligible-option selection; it does not create the paper ordering automatically.
 
 ## 1. Default cleaning before the linear fit
 
@@ -35,7 +52,7 @@ The normal paper ordering is **clean → enrich → initial linear fit → eligi
 | Settlement flag | Retain only provider `ss_flag == "0"`. This is separate from AM/PM settlement; AM options are not excluded by this rule. |
 | Pairing | Inner-join surviving calls and puts on expiry, AM/PM settlement, exercise style and strike. A quote without its matching call/put is not a usable paired row. |
 
-Observation-date exclusions and expiry-date exclusions are separate. **2025-01-08** is explicitly listed in [`BAD.DAYS_ALL`](../src/openqdata/widb/bad.py), so it raises by default or returns an empty frame before provider access with `raise_if_bad_day=False`, even if vendor quotes exist. Its historical SANOS calibration was never attempted. The blacklist comment only says `expiries with zero business days?`; no fitting failure is documented as justification. **2025-01-09** was a market closure and is separately listed as an irregular expiry. The current expiry filter therefore does not itself justify excluding the entire January 8 observation day. See the [coverage and provenance note](retained-model-day-gaps.md) before reassessing that inherited exclusion.
+Observation-date exclusions and expiry-date exclusions are separate. **2025-01-08** is explicitly listed in [`BAD.DAYS_ALL`](../../src/openqdata/widb/bad.py), so it raises by default or returns an empty frame before provider access with `raise_if_bad_day=False`, even if vendor quotes exist. No SANOS fit is attempted for it. The blacklist comment only says `expiries with zero business days?`; no fitting failure is documented as justification. **2025-01-09** was a market closure and is separately listed as an irregular expiry. The current expiry filter therefore does not itself justify excluding the entire January 8 observation day.
 
 Spot and previous-business-day spot, a zero curve and provider forwards are required. Reference-forward checks reject suspicious values or duplicate expiry/settlement keys; one recognized `spot / 1_000_000` data error is repaired to spot. These are data-integrity checks, not liquidity selection.
 
@@ -54,7 +71,7 @@ Business-day maturity uses the NYSE calendar, with 0.8 business days subtracted 
 
 The 10/4 traded-strike checks are made before and again after synthetic-price cleaning, before the final implied-volatility checks. Positive volume means **greater than zero**, not the later `log10(1+volume) >= 1` threshold. These are **expiry-level requirements for estimating the forward**: an otherwise valid, untraded strike can remain in an eligible expiry. There is no per-row minimum volume or open interest at this stage, and no 1,000-row cap, maturity cap or NMS5 window.
 
-`ExpiryFilter` has no normalization switch. The former unused `normalize` field was removed in configuration version **0.6**. Its legacy default (`normalize=False`) label and hash encoding are retained internally, preserving the existing enriched-data and downstream fit/time-series **cache IDs**. The bumped dependency **version** makes old processed entries stale at those same IDs; normal caching recomputes them, while cache-only access rejects the version mismatch. Raw/provider caches are unaffected.
+`ExpiryFilter` has no normalization switch; spot normalization is applied later by `OptionsFilter`.
 
 Write `F` for the implied forward and `DF` for the discount factor. There are two different normalizations to distinguish here:
 
@@ -65,7 +82,7 @@ For example, with strike 105, forward 102 and spot 100, enrichment produces `pur
 
 The implied-volatility price tolerance is `min(0.1 * pure_spread, 1e-6)`; the boundary-repricing check allows 1.1 times that tolerance. Enrichment also computes `nms`, `nms_atm`, Greeks and combined liquidity fields; computing these fields does not select an ATM subset.
 
-Source: [day.py](../src/openqdata/widb/day.py), [bad.py](../src/openqdata/widb/bad.py), [calendar and NMS5](../src/openqdata/biz_calendar.py).
+Source: [day.py](../../src/openqdata/widb/day.py), [bad.py](../../src/openqdata/widb/bad.py), [calendar and NMS5](../../src/openqdata/biz_calendar.py).
 
 ## 2. Linear fitting and its own masks
 
@@ -75,7 +92,7 @@ The fitter extends strike boundaries, can trim unsuitable boundary strikes, mask
 
 `mk_arb_free_day` retains **all original strike rows for retained expiries**, with `mask_arb_free` identifying active strikes. `pure_fit1_*` describes the per-expiry fit and `pure_fitX_*` the global fit. Original `pure_bid_price` / `pure_ask_price` remain the calibration observations; later smoothing does not silently replace them with fitted linear mids.
 
-Source: [WIDB arbfree adapter](../src/openqdata/widb/arbfree.py), [MkArbFree and ArbFreePricer](../src/openqdata/arbfree/arbfree.py).
+Source: [WIDB arbfree adapter](../../src/openqdata/widb/arbfree.py), [MkArbFree and ArbFreePricer](../../src/openqdata/arbfree/arbfree.py).
 
 ## 3. Separate eligible-option filter and 1,000-row cap
 
@@ -98,21 +115,21 @@ Source: [WIDB arbfree adapter](../src/openqdata/widb/arbfree.py), [MkArbFree and
 
 To study eligibility without a cap, retain the other settings and set `max_num_options` above the input row count. That is a different population from the original capped paper-style sample. “Everything” bypasses `OptionsFilter` entirely.
 
-Source: [options_filter.py](../src/openqdata/widb/options_filter.py).
+Source: [options_filter.py](../../src/openqdata/widb/options_filter.py).
 
 ## 4. Final surface and fit statistics
 
 Choose smoothness explicitly: **0** for the linear surface, **0.1** or **0.25** for the smooth SANOS surface. The class default is `smoothness=None`, also linear; the data pipeline does not add a 0.25 fit automatically. With `surface_expiry_linear=True` (default), the initial per-expiry step stays linear when fitting a smooth surface.
 
-Other defaults are `mid_fit_weight=0.1`, `min_half_spread=1e-4`, and no DLV floor/cap (`min_dlv=None`, `max_dlv=None`). Active quotes receive equal user weights, with the existing half-spread normalization. The package solver defaults to HiGHS simplex with Clarabel fallback; `timeout_seconds=300` is the class default. The historical comparison runs explicitly used 600-second attempts, 3,000-second retries and an isolated audited solver adapter; those operational settings are not implicit library defaults.
+Other defaults are `mid_fit_weight=0.1`, `min_half_spread=1e-4`, and no DLV floor/cap (`min_dlv=None`, `max_dlv=None`). Active quotes receive equal user weights, with the existing half-spread normalization. The package solver defaults to HiGHS simplex with Clarabel fallback; `timeout_seconds=300` is the class default. The [fit-quality runs](fit-quality.md) explicitly used 600-second attempts, 3,000-second retries and an audited solver adapter; those settings are not library defaults.
 
 Evaluate with `compute_market_fit(..., and_vols=False)` on the **entire chosen input population**, omitting `masks` to include internally masked rows. `pcnt_fit` is the **fraction outside** bid/ask, despite its name. `mean_err` and `median_err` are conditional on being outside, in half-spread units with the `min_half_spread` floor; zero-excess days have zero conditional statistics. A feasible model can still fit quotes poorly. Stored model fields `input_index` and `masks` explain the active objective population.
 
-The completed historical comparisons are linked from {download}`SANOS.md <../SANOS.md>`; they include daily within-bid/ask, conditional excess and recorded fit-time plots. The completed comparisons evaluate both the Everything model and filtered model on identical selected quotes, and separately retain the full-book statistics. Their independent post-repair certificates check density bounds, mass, first moment, full-range calendar and original quote/slack constraints. The permitted absolute tolerance is 1e-5, trying 1e-7 first; this extra audit/recovery layer belongs to the recorded runs, not to `OptionsFilter`.
+The [historical SPX results](fit-quality.md) include daily within-bid/ask, conditional excess and recorded fit-time plots. They evaluate both the Everything model and filtered model on identical selected quotes, and separately retain the full-book statistics. Their independent post-repair certificates check density bounds, mass, first moment, full-range calendar and original quote/slack constraints. The permitted absolute tolerance is 1e-5, trying 1e-7 first; this extra audit/recovery layer belongs to the recorded runs, not to `OptionsFilter`.
 
 ## 5. Python example: clean, fit linearly, select, then smooth
 
-Configure the external data root before importing openqdata; see [configuration](configuration.md). This example uses cached provider data where available and may download missing observations in normal mode. Tests use stored inputs and block provider access.
+Configure the external data root before importing openqdata; see [configuration](../getting-started.md). This example uses cached provider data where available and may download missing observations in normal mode. Tests use stored inputs and block provider access.
 
 `enrich_day` and `mk_arb_free_day` identify cached inputs by ticker, date and configuration, not by the contents of an explicitly supplied frame. If you modify `raw` or `enriched`, pass `override_cache_mode="off"` to those consuming calls so an existing cache cannot override your edits. `filter_options_day(source_data=linear, ...)` itself is uncached and consumes the supplied frame directly.
 
@@ -182,7 +199,7 @@ for eta in (0.0, 0.1, 0.25):
 # OptionsFilter(normalize=False, max_num_options=len(linear) + 1000).
 ```
 
-The public fitting call performs its own linear per-expiry preprocessing on the selected quotes. The historical runner reused identical per-expiry geometry between smoothness values for speed; it checked that this matched a fresh fit. Neither path substitutes linear mids for the observed bid/ask inputs.
+The public fitting call performs its own linear per-expiry preprocessing on the selected quotes. It does not substitute linear mids for the observed bid/ask inputs.
 
 To store a model in a uniquely named external processed directory:
 
@@ -224,4 +241,24 @@ series = build_time_series(
 
 This packs the **linearly fitted and selected observations**. With `override_cache_mode="off"`, daily frames are recomputed and packed in memory; no processed-cache files are required. It does not pack the additional smooth `models` created above. Array width is the largest selected day in the requested range, up to the configured cap. Use `series["is_valid"]` to exclude zero-padded slots; it is a padding mask, distinct from the fitter's `mask_arb_free`. For smooth post-filter models over a date range, repeat the explicit selected-surface fit above per date and retain each model and its population statistics separately.
 
-Source: [timeseries.py](../src/openqdata/widb/timeseries.py), [storage configuration](configuration.md), [offline pipeline tests](testing.md).
+`table_of_time_series(series)` summarizes the packed arrays. For 62 SPX days in early 2025, with `MkArbFree(no_arb_mode="expiry")` and cash-unit output (`OptionsFilter(normalize=False)`), it reports the following (abridged):
+
+| Field | Shape | Dtype | Mean | Min | Max |
+| --- | --- | --- | --- | --- | --- |
+| is_valid | (62, 1000) | bool | 1 | 1 | 1 |
+| spot | (62, 1) | float32 | 6249 | 5936 | 6502 |
+| strike | (62, 1000) | float32 | 6287 | 4000 | 1.1e+04 |
+| bdte | (62, 1000) | float32 | 57.16 | 1 | 639.2 |
+| tte_y | (62, 1000) | float32 | 0.2268 | 0.003968 | 2.537 |
+| df | (62, 1000) | float32 | 0.9902 | 0.9001 | 0.9999 |
+| fwd | (62, 1000) | float32 | 6298 | 5935 | 6943 |
+| nms | (62, 1000) | float32 | -0.04815 | -3.944 | 3.536 |
+| bid_vol / ask_vol | (62, 1000) | float32 | 0.1385 / 0.1393 | 0.06905 | 0.2944 |
+| pure_strike | (62, 1000) | float32 | 0.9982 | 0.5878 | 1.71 |
+| pure_bid_price / pure_ask_price | (62, 1000) | float32 | 0.02569 / 0.0258 | 0.000327 | 0.4281 |
+| pure_fit1_price | (62, 1000) | float32 | 0.02574 | 0.0003361 | 0.4278 |
+| mask_arb_free | (62, 1000) | bool | 0.8556 | 0 | 1 |
+
+All 54 fields together take 11.8 MB. The packed dictionary is written efficiently as HDF5. See the [field reference](fields.md) for every column.
+
+Source: [timeseries.py](../../src/openqdata/widb/timeseries.py), [offline pipeline tests](../development.md).

@@ -30,9 +30,8 @@ def test_defaults_do_not_create_storage(clean_settings):
     assert not (clean_settings / ".local").exists()
 
 
-@pytest.mark.parametrize("filename", ["openqdata.toml", "qdata.toml"])
-def test_toml_relative_paths_and_environment_precedence(clean_settings, monkeypatch, filename):
-    config = clean_settings / filename
+def test_toml_relative_paths_and_environment_precedence(clean_settings, monkeypatch):
+    config = clean_settings / "openqdata.toml"
     config.write_text('[data]\nroot="relative"\nraw="vendor"\n')
     monkeypatch.setenv("OQ_DATA_PROCESSED", str(clean_settings / "override"))
     environment = Environment()
@@ -42,7 +41,7 @@ def test_toml_relative_paths_and_environment_precedence(clean_settings, monkeypa
 
 
 def test_environment_root_overrides_config_root(clean_settings, monkeypatch):
-    (clean_settings / "qdata.toml").write_text('[data]\nroot="config_root"\n')
+    (clean_settings / "openqdata.toml").write_text('[data]\nroot="config_root"\n')
     monkeypatch.setenv("OQ_DATA_ROOT", str(clean_settings / "env_root"))
     assert Path(Environment().locations.raw.path) == clean_settings / "env_root/raw"
 
@@ -54,26 +53,25 @@ def test_explicit_missing_config_is_an_error(clean_settings):
 
 @pytest.mark.parametrize("content", ['[data]\ntraining="bad"\n', '[data]\nroot=4\n', '[data]\nroot=""\n'])
 def test_bad_config_is_rejected(clean_settings, content):
-    config = clean_settings / "qdata.toml"
+    config = clean_settings / "openqdata.toml"
     config.write_text(content)
     with pytest.raises(ValueError):
         Environment(config)
 
 
-@pytest.mark.parametrize("package", ["openqdata", "qdata"])
-def test_xdg_default_config(clean_settings, package):
-    config = clean_settings / f"config/{package}/config.toml"
+def test_xdg_default_config(clean_settings):
+    config = clean_settings / "config/openqdata/config.toml"
     config.parent.mkdir(parents=True)
     config.write_text('[data]\nroot="data"\n')
     assert Path(Environment().locations.raw.path) == config.parent / "data/raw"
 
 
-def test_current_config_precedes_legacy_config(clean_settings):
-    for package in ("openqdata", "qdata"):
-        (clean_settings / f"{package}.toml").write_text(f'[data]\nroot="{package}-data"\n')
+def test_working_directory_config_precedes_user_config(clean_settings):
+    (clean_settings / "openqdata.toml").write_text('[data]\nroot="cwd-data"\n')
+    (clean_settings / ".openqdata.toml").write_text('[data]\nroot="home-data"\n')
     environment = Environment()
     assert environment.config_file == clean_settings / "openqdata.toml"
-    assert Path(environment.locations.raw.path) == clean_settings / "openqdata-data/raw"
+    assert Path(environment.locations.raw.path) == clean_settings / "cwd-data/raw"
 
 
 def test_test_mode_ignores_production_storage(clean_settings, monkeypatch):
@@ -111,20 +109,3 @@ def test_source_names_cannot_escape_locations(source):
     from openqdata import env
     with pytest.raises(ValueError):
         env.locations(source)
-
-
-@pytest.mark.parametrize("previous", ["oqdata", "qdata"])
-def test_renamed_package_reuses_existing_storage(clean_settings, previous):
-    stored = clean_settings / ".local/share" / previous
-    (stored / "processed").mkdir(parents=True)
-    assert Path(Environment().locations.processed.path) == stored / "processed"
-    assert not (clean_settings / ".local/share/openqdata").exists()
-
-
-def test_new_configuration_precedes_previous_name(clean_settings):
-    previous = clean_settings / "oqdata.toml"
-    previous.write_text('[data]\nroot="existing"\n')
-    assert Path(Environment().locations.raw.path) == clean_settings / "existing/raw"
-    current = clean_settings / "openqdata.toml"
-    current.write_text('[data]\nroot="selected"\n')
-    assert Path(Environment().locations.raw.path) == clean_settings / "selected/raw"

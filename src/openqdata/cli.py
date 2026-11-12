@@ -30,7 +30,7 @@ def run_module(namespace: dict[str, Any]) -> None:
         for name, client in clients.items()
         for method, value in inspect.getmembers(client)
         if callable(value) and not method.startswith("_")
-        and method not in {"get_token", "credentials", "connect", "rest_client", "http_session"}
+        and method not in {"get_token", "api_key", "credentials", "connect", "rest_client", "http_session"}
     }
     parser = argparse.ArgumentParser(description=namespace.get("__doc__"))
     parser.add_argument("function", choices=sorted(set(functions) | set(methods)))
@@ -54,7 +54,7 @@ def run_module(namespace: dict[str, Any]) -> None:
         try:
             hints = get_type_hints(function)
         except (NameError, TypeError):
-            # Several legacy APIs contain descriptive, non-runtime annotations.
+            # Some APIs use descriptive, non-runtime annotations.
             hints = {}
         for key, value in params.items():
             annotation = hints.get(key)

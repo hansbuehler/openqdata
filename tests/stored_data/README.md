@@ -5,5 +5,3 @@
 `synthetic_massive.py` constructs endpoint payloads, quotes, trades, bars and contracts from fixed invented values. Tests run real conversions, filtering, alignment, aggregation, adjustment factors and contract rejection. No downloaded provider responses are retained.
 
 `processed/fred/rates.csv` and `processed/yahoo/prices.csv` are small synthetic transformation inputs. All other caches and model round trips are written only beneath pytest's temporary output directory.
-
-Original fixtures are archived outside Git. The public repository history excludes the original fixture tree and saved notebook outputs. Production licensed caches and completed fits are unchanged.

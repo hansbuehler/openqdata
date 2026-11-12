@@ -32,3 +32,15 @@ def test_cli_refuses_output_inside_checkout(monkeypatch):
     with pytest.raises(SystemExit) as result:
         _run(monkeypatch, example, ["example", "--output", str(Path(__file__).parents[1] / "output.json")])
     assert result.value.code == 2
+
+
+@pytest.mark.parametrize("module", ["openqdata.fred.client", "openqdata.massive.client", "openqdata.widb.client"])
+def test_cli_does_not_expose_credential_helpers(monkeypatch, capsys, module):
+    import importlib
+    namespace = vars(importlib.import_module(module))
+    monkeypatch.setattr(sys, "argv", ["example", "--help"])
+    with pytest.raises(SystemExit):
+        run_module(namespace)
+    listed = capsys.readouterr().out
+    for helper in ("api_key", "get_token", "credentials", "connect"):
+        assert f"Client.{helper}" not in listed

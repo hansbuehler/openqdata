@@ -16,7 +16,7 @@ def test_fred_fallback_scaling_and_forward_fill(monkeypatch):
         assert start == date(2025, 1, 2) and end == date(2025, 1, 5)
         return source.select("date", series_id)
     monkeypatch.setattr(rates, "_fetch_fred_series", fetch)
-    monkeypatch.setenv("FRED_API_KEY", "local-test-placeholder")
+    monkeypatch.setattr(rates.FREDClient, "api_key", staticmethod(lambda: "local-test-placeholder"))
     result = rates.load_fred_rates.__wrapped__("2025-01-02", "2025-01-05")
     assert result["date"].to_list() == [date(2025, 1, 2), date(2025, 1, 3), date(2025, 1, 5)]
     assert result["on"].to_list() == pytest.approx([0.0433, 0.0435, 0.046])

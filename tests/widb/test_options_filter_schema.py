@@ -9,7 +9,7 @@ import pytest
 from openqdata.widb import options_filter
 
 
-def test_option_filter_restores_legacy_object_string_schema(monkeypatch) -> None:
+def test_option_filter_restores_object_string_schema(monkeypatch) -> None:
     frame = pd.DataFrame({
         "ticker": pd.Series(["SPX"], dtype="string"),
         "value": pd.Series([1.0], dtype="float32"),

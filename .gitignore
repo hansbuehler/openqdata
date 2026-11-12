@@ -448,5 +448,3 @@ __marimo__/
 build/
 dist/
 openqdata.toml
-qdata.toml
-quantdata.toml

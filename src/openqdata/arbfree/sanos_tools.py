@@ -114,9 +114,9 @@ class SanosPricer:
 
             ix = np.searchsorted( self.expiries, expiry )
             if ix==0:
-                # Legacy behavior: using q_1 for every 0<t<T_1 makes the law
-                # jump from the time-zero Dirac mass to q_1 as t approaches zero.
-                # New implementations should interpolate from the Dirac mass.
+                # Using q_1 for every 0<t<T_1 makes the law jump from the
+                # time-zero Dirac mass to q_1 as t approaches zero; interpolating
+                # from the Dirac mass would avoid this discontinuity.
                 strikes_0 = self.xstrikes[0]
                 p_0       = self.xdensities[0]
                 return call( spots=strikes_0 ) @ p_0

@@ -1,4 +1,8 @@
-# Offline testing
+# Development
+
+openqdata is research software for academic use. Contributions follow [STYLE_GUIDE.md](https://github.com/hansbuehler/openqdata/blob/main/STYLE_GUIDE.md): correct measures, units and timing conventions come first, and every cache-affecting change bumps its `@version`.
+
+## Offline tests
 
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider
@@ -10,10 +14,10 @@ Massive endpoint, quote/trade, contract and ticker-history tests also use indepe
 
 Python compatibility is checked in CI on 3.12, 3.13 (primary) and 3.14. Optional JAX is tested separately from the default data package. Generated test/build output belongs in an external run directory.
 
-Synthetic endpoint payloads cover client conversion, split-adjustment dates, option-bar cache keys, pagination and closing-condition filtering. Historical live endpoint coverage is documented in [Massive](massive.md); its original observations remain external.
+Synthetic endpoint payloads cover client conversion, split-adjustment dates, option-bar cache keys, pagination and closing-condition filtering. Live endpoint coverage is described below.
 
 
-## Core market-data pipeline
+### WIDB benchmark pipeline
 
 `tests/widb/test_pipeline.py` recomputes cleaning, enrichment, the linear DLV fit, eligible-option selection, smooth SANOS fits at 0/0.1/0.25, HDF5 reload/repricing, time-series padding and downstream day extraction from independently constructed synthetic observations. Only provider retrieval is replaced; the filters, fitters and packing functions execute normally. The shared network guard remains active. Calls and puts are built from an independent Black–Scholes formula with invented strikes, forwards, rates, identifiers and activity. Deliberate above-IV-ceiling prices exercise enrichment rejection; a butterfly-arbitrage expiry exercises fitter expiry removal. These inputs are not masked or rescaled licensed observations.
 
@@ -25,9 +29,9 @@ Cache regressions exercise uncached/read-only packing, the configured fitting ba
 PYTHONDONTWRITEBYTECODE=1 python -m pytest -q -p no:cacheprovider tests/widb tests/arbfree
 ```
 
-The existing CI command runs these alongside all other offline source/processing tests on Python 3.12–3.14. See [the pipeline and configurations](market-data.md).
+The existing CI command runs these alongside all other offline source/processing tests on Python 3.12–3.14. See [the pipeline and configurations](widb-benchmark/pipeline.md).
 
-## Commit hook
+### Commit hook
 
 The tracked `.githooks/pre-commit` runs the full offline suite against the working tree, using the active environment's `python`. It creates and removes its own scratch directory beneath `${TMPDIR:-/tmp}/openqdata/`; it never downloads fixtures or installs dependencies.
 
@@ -44,4 +48,20 @@ OPENQDATA_TEST_PYTHON=/path/to/environment/bin/python git hook run pre-commit
 
 The hook is configured locally for this checkout; other clones can opt in with the command above. It does not replace the Python-version CI matrix. To disable this checkout's hook configuration, use `git config --unset core.hooksPath`.
 
-The separate private benchmark repository uses Git LFS for retained datasets. The core repository does not require Git LFS.
+## Live validation
+
+Live checks are run manually against real provider accounts, with an isolated environment and a fresh external data root. They are never part of the offline suite.
+
+- **Downloads:** FRED, Cboe VIX, Yahoo prices, Massive (every supported endpoint and aggregate timespan, with pagination) and WRDS IvyDB.
+- **Processing:**
+  - Massive trade/quote filtering and alignment, and contract filtering.
+  - The WIDB stages: raw collection, enrichment, arbitrage-free fitting, option filtering, time-series packing and surface fitting.
+  - Ticker calendars.
+- **Cache replay:** a second process with network access blocked replays every output from the cache and checks it against the live run.
+- **Python 3.14:** the WIDB results on Python 3.14 are checked against Python 3.13. On 3.14, authentication uses `.pgpass`.
+
+Reports and logs stay with the external run outputs. Credentials are never written into reports.
+
+## Releases
+
+See [releasing](releasing.md). Changes are listed in [CHANGELOG.md](https://github.com/hansbuehler/openqdata/blob/main/CHANGELOG.md).
